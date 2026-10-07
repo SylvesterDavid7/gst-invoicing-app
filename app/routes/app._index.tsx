@@ -1,0 +1,337 @@
+import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
+import { useLoaderData, useActionData, useSubmit, useNavigation, Link } from "@remix-run/react";
+import {
+  Page,
+  Layout,
+  Card,
+  Grid,
+  Text,
+  Badge,
+  DataTable,
+  Button,
+  BlockStack,
+  InlineStack,
+  Banner,
+  Divider
+} from "@shopify/polaris";
+import { prisma } from "../db.server";
+import { invoiceProcessingQueue, pdfRenderingQueue, syncDistributionQueue, enqueueOrderPaid } from "../services/queue/invoice-queue.server";
+
+export async function action({ request }: ActionFunctionArgs) {
+  const shopDomain = "quickstart-demo.myshopify.com";
+
+  // Ensure store exists in database
+  let store = await prisma.store.findUnique({
+    where: { shopifyDomain: shopDomain }
+  });
+
+  if (!store) {
+    store = await prisma.store.create({
+      data: {
+        shopifyDomain: shopDomain,
+        accessToken: "mock-token",
+        legalName: "X-Brews Specialty Coffee Private Limited",
+        tradeName: "X-Brews Roasters",
+        gstin: "27AABCA1234A1Z5",
+        stateCode: "27",
+        registeredAddress: {
+          addressLine1: "Plot 42, Bandra-Kurla Complex",
+          city: "Mumbai",
+          state: "Maharashtra",
+          pincode: "400051",
+          country: "India"
+        },
+        invoicePrefix: "XB",
+        creditNotePrefix: "CN",
+        currentFiscalYear: "26-27"
+      }
+    });
+  }
+
+  const orderNum = Math.floor(1000 + Math.random() * 9000);
+  const testOrder = {
+    id: Date.now(),
+    order_number: orderNum,
+    email: "buyer@koramangalacafes.com",
+    created_at: new Date().toISOString(),
+    taxes_included: true,
+    total_shipping_price_set: {
+      shop_money: { amount: "150.00" }
+    },
+    shipping_address: {
+      first_name: "Aarav",
+      last_name: "Sharma",
+      company: "Koramangala Specialty Roasters LLP",
+      address1: "100 Feet Road, Indiranagar",
+      city: "Bengaluru",
+      province: "Karnataka",
+      province_code: "KA",
+      zip: "560038",
+      country: "India"
+    },
+    note_attributes: [
+      { name: "gstin", value: "29AABCU9603R1ZM" },
+      { name: "company_name", value: "Koramangala Specialty Roasters LLP" }
+    ],
+    line_items: [
+      {
+        id: 101,
+        title: "Monsooned Malabar Whole Beans (1kg)",
+        sku: "XB-MM-1KG",
+        hsn_code: "0901",
+        quantity: 2,
+        price: "1200.00",
+        total_discount: "0.00",
+        tax_lines: [{ rate: 0.05, title: "GST 5%" }]
+      },
+      {
+        id: 102,
+        title: "Precision Espresso Tamper 58.5mm",
+        sku: "XB-ACC-TMPR",
+        hsn_code: "8205",
+        quantity: 1,
+        price: "2360.00",
+        total_discount: "0.00",
+        tax_lines: [{ rate: 0.18, title: "GST 18%" }]
+      }
+    ]
+  };
+
+  await enqueueOrderPaid(shopDomain, testOrder);
+  return json({ success: true, orderNumber: orderNum });
+}
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  const shopDomain = "quickstart-demo.myshopify.com";
+
+  let store = await prisma.store.findUnique({
+    where: { shopifyDomain: shopDomain }
+  });
+
+  const recentInvoices = store
+    ? await prisma.invoice.findMany({
+        where: { storeId: store.id },
+        orderBy: { invoiceDate: "desc" },
+        take: 10
+      })
+    : [];
+
+  const totalInvoicesCount = store
+    ? await prisma.invoice.count({ where: { storeId: store.id } })
+    : 0;
+
+  const b2bInvoicesCount = store
+    ? await prisma.invoice.count({
+        where: { storeId: store.id, buyerGstin: { not: null } }
+      })
+    : 0;
+
+  // Queue health metrics
+  let queueStats = { processing: 0, rendering: 0, sync: 0 };
+  try {
+    const [pCount, rCount, sCount] = await Promise.all([
+      invoiceProcessingQueue.getWaitingCount(),
+      pdfRenderingQueue.getWaitingCount(),
+      syncDistributionQueue.getWaitingCount()
+    ]);
+    queueStats = { processing: pCount, rendering: rCount, sync: sCount };
+  } catch {
+    // If Redis is not connected during local dev preview
+  }
+
+  return json({
+    store,
+    recentInvoices,
+    totalInvoicesCount,
+    b2bInvoicesCount,
+    queueStats
+  });
+}
+
+export default function AppDashboard() {
+  const { store, recentInvoices, totalInvoicesCount, b2bInvoicesCount, queueStats } =
+    useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
+  const submit = useSubmit();
+  const navigation = useNavigation();
+
+  const isTriggering = navigation.state === "submitting";
+
+  const handleTriggerTestOrder = () => {
+    submit(null, { method: "POST" });
+  };
+
+  const rows = recentInvoices.map((inv: any) => [
+    inv.invoiceNumber,
+    `#${inv.orderNumber}`,
+    inv.buyerCompanyName || "Retail Customer",
+    inv.buyerGstin ? <Badge tone="success">{inv.buyerGstin}</Badge> : <Badge tone="info">B2C</Badge>,
+    `₹${inv.grandTotal}`,
+    inv.isInterState ? "IGST (Inter)" : "CGST+SGST (Intra)",
+    new Date(inv.invoiceDate).toLocaleDateString("en-IN"),
+    inv.pdfUrl ? (
+      <Button url={inv.pdfUrl} target="_blank" size="micro" variant="plain">
+        Download PDF
+      </Button>
+    ) : (
+      <Badge tone="attention">Rendering...</Badge>
+    )
+  ]);
+
+  return (
+    <Page
+      title="GST Invoicing Overview"
+      subtitle="Automated Statutory Invoicing, B2B Tax Credit Engine & GSTR-1 Compliance"
+      primaryAction={{
+        content: "Export GSTR-1 Excel",
+        url: "/app/reports"
+      }}
+      secondaryActions={[
+        {
+          content: isTriggering ? "Queueing Order..." : "⚡ Place Simulated Test Order",
+          onAction: handleTriggerTestOrder,
+          loading: isTriggering
+        },
+        {
+          content: "Settings",
+          url: "/app/settings"
+        }
+      ]}
+    >
+      <BlockStack gap="500">
+        {actionData?.success && (
+          <Banner title="Test Order Enqueued Successfully!" tone="success">
+            <p>
+              Order #{actionData.orderNumber} has been added to the BullMQ queue in Upstash Redis.
+              Watch your worker terminal process the tax computation, sequence numbering, and PDF rendering!
+            </p>
+          </Banner>
+        )}
+        {!store && (
+          <Banner title="Action Required: Setup Store GST Profile" tone="warning">
+            <p>
+              Please navigate to <Link to="/app/settings">Settings</Link> to configure your 15-digit GSTIN,
+              origin state code, and registered address to start auto-generating invoices.
+            </p>
+          </Banner>
+        )}
+
+        <Grid>
+          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 3, lg: 3, xl: 3 }}>
+            <Card>
+              <BlockStack gap="200">
+                <Text as="h3" variant="headingSm" tone="subdued">
+                  Total Invoices Issued
+                </Text>
+                <Text as="p" variant="heading2xl">
+                  {totalInvoicesCount}
+                </Text>
+                <Text as="p" variant="bodySm" tone="subdued">
+                  Current FY: {store?.currentFiscalYear || "26-27"}
+                </Text>
+              </BlockStack>
+            </Card>
+          </Grid.Cell>
+
+          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 3, lg: 3, xl: 3 }}>
+            <Card>
+              <BlockStack gap="200">
+                <Text as="h3" variant="headingSm" tone="subdued">
+                  B2B Tax Credit Orders
+                </Text>
+                <Text as="p" variant="heading2xl">
+                  {b2bInvoicesCount}
+                </Text>
+                <Text as="p" variant="bodySm" tone="success">
+                  GSTR-1 Table 4 Eligible
+                </Text>
+              </BlockStack>
+            </Card>
+          </Grid.Cell>
+
+          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 3, lg: 3, xl: 3 }}>
+            <Card>
+              <BlockStack gap="200">
+                <Text as="h3" variant="headingSm" tone="subdued">
+                  Current Sequence
+                </Text>
+                <Text as="p" variant="heading2xl">
+                  #{store?.invoiceSequence || 0}
+                </Text>
+                <Text as="p" variant="bodySm" tone="subdued">
+                  Next: {store?.invoicePrefix || "INV"}/{store?.currentFiscalYear || "26-27"}/
+                  {String((store?.invoiceSequence || 0) + 1).padStart(4, "0")}
+                </Text>
+              </BlockStack>
+            </Card>
+          </Grid.Cell>
+
+          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 3, lg: 3, xl: 3 }}>
+            <Card>
+              <BlockStack gap="200">
+                <Text as="h3" variant="headingSm" tone="subdued">
+                  BullMQ Queue Pipeline
+                </Text>
+                <InlineStack gap="200">
+                  <Badge tone="info">{`Tax: ${queueStats.processing}`}</Badge>
+                  <Badge tone="info">{`PDF: ${queueStats.rendering}`}</Badge>
+                  <Badge tone="info">{`Sync: ${queueStats.sync}`}</Badge>
+                </InlineStack>
+                <Text as="p" variant="bodySm" tone="subdued">
+                  Decoupled Async Architecture
+                </Text>
+              </BlockStack>
+            </Card>
+          </Grid.Cell>
+        </Grid>
+
+        <Layout>
+          <Layout.Section>
+            <Card>
+              <BlockStack gap="400">
+                <InlineStack align="space-between">
+                  <Text as="h2" variant="headingMd">
+                    Recent Generated Invoices
+                  </Text>
+                  <Button variant="plain" url="/app/invoices">
+                    View All
+                  </Button>
+                </InlineStack>
+
+                {recentInvoices.length === 0 ? (
+                  <Text as="p" tone="subdued">
+                    No invoices generated yet. Webhook listening on <code>orders/paid</code>.
+                  </Text>
+                ) : (
+                  <DataTable
+                    columnContentTypes={[
+                      "text",
+                      "text",
+                      "text",
+                      "text",
+                      "numeric",
+                      "text",
+                      "text",
+                      "text"
+                    ]}
+                    headings={[
+                      "Invoice No",
+                      "Order",
+                      "Customer / Company",
+                      "GSTIN Type",
+                      "Grand Total",
+                      "Tax Type",
+                      "Date",
+                      "Actions"
+                    ]}
+                    rows={rows}
+                  />
+                )}
+              </BlockStack>
+            </Card>
+          </Layout.Section>
+        </Layout>
+      </BlockStack>
+    </Page>
+  );
+}

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GST Tax Invoice - {{invoiceNumber}}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 12mm 15mm 15mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: #1a1a1a;
+      line-height: 1.4;
+      background: #fff;
+    }
+    .invoice-card {
+      border: 1px solid #dcdcdc;
+      padding: 16px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 2px solid #202223;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+    .seller-logo {
+      max-height: 60px;
+      max-width: 180px;
+      object-fit: contain;
+    }
+    .title-area {
+      text-align: right;
+    }
+    .title-area h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #000;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .sub-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 600;
+      color: #444;
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      margin-top: 4px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .box {
+      border: 1px solid #e1e3e5;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .box-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #5c5f62;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+    .table-container {
+      margin-bottom: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+    }
+    th {
+      background-color: #f7f7f8;
+      color: #202223;
+      font-weight: 700;
+      text-align: left;
+      padding: 6px 8px;
+      border: 1px solid #dcdcdc;
+    }
+    td {
+      padding: 6px 8px;
+      border: 1px solid #e1e3e5;
+      vertical-align: top;
+    }
+    .text-right {
+      text-align: right;
+    }
+    .text-center {
+      text-align: center;
+    }
+    .totals-area {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .words-box {
+      width: 55%;
+      border: 1px solid #e1e3e5;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 10px;
+    }
+    .totals-table {
+      width: 42%;
+    }
+    .totals-table td {
+      border: none;
+      padding: 4px 6px;
+    }
+    .totals-table tr.grand-total td {
+      border-top: 2px solid #202223;
+      border-bottom: 2px solid #202223;
+      font-weight: 700;
+      font-size: 12px;
+      color: #000;
+    }
+    .hsn-summary-table th, .hsn-summary-table td {
+      font-size: 9px;
+      padding: 4px 6px;
+    }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+      padding-top: 12px;
+      border-top: 1px solid #e1e3e5;
+    }
+    .terms {
+      width: 60%;
+      font-size: 9px;
+      color: #6d7175;
+    }
+    .signatory {
+      width: 35%;
+      text-align: center;
+      font-size: 10px;
+    }
+    .signature-img {
+      height: 45px;
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="invoice-card">
+    <!-- Header -->
+    <div class="header">
+      <div>
+        {{#if store.logoUrl}}
+          <img src="{{store.logoUrl}}" alt="{{store.legalName}}" class="seller-logo">
+        {{/if}}
+        <h2 style="font-size: 14px; font-weight: 700; margin-top: 4px;">{{store.legalName}}</h2>
+        {{#if store.tradeName}}<p style="color: #6d7175;">({{store.tradeName}})</p>{{/if}}
+        <p>{{store.registeredAddress.addressLine1}}, {{store.registeredAddress.city}}</p>
+        <p>{{store.registeredAddress.state}} - {{store.registeredAddress.pincode}}</p>
+        <p><strong>GSTIN:</strong> {{store.gstin}} | <strong>State Code:</strong> {{store.stateCode}}</p>
+      </div>
+      <div class="title-area">
+        <h1>TAX INVOICE</h1>
+        <div class="sub-badge">(Issued under Rule 46 of CGST Rules, 2017)</div>
+        <p style="margin-top: 8px;"><strong>Invoice No:</strong> {{invoiceNumber}}</p>
+        <p><strong>Date:</strong> {{invoiceDate}}</p>
+        <p><strong>Order No:</strong> #{{orderNumber}}</p>
+        <p><strong>Place of Supply (POS):</strong> {{posStateName}} ({{posStateCode}})</p>
+      </div>
+    </div>
+
+    <!-- Bill to & Ship to Grid -->
+    <div class="meta-grid">
+      <div class="box">
+        <div class="box-title">Details of Buyer / Billed To:</div>
+        <p><strong>{{#if buyerCompanyName}}{{buyerCompanyName}}{{else}}{{buyerName}}{{/if}}</strong></p>
+        {{#if buyerGstin}}
+          <p style="color: #008060; font-weight: 700;">GSTIN: {{buyerGstin}}</p>
+        {{/if}}
+        <p>{{buyerAddress.address1}}</p>
+        <p>{{buyerAddress.city}}, {{buyerAddress.province}} - {{buyerAddress.zip}}</p>
+        <p>State Code: {{posStateCode}}</p>
+      </div>
+
+      <div class="box">
+        <div class="box-title">Shipped To / Delivery Destination:</div>
+        <p><strong>{{buyerName}}</strong></p>
+        <p>{{shippingAddress.address1}}</p>
+        <p>{{shippingAddress.city}}, {{shippingAddress.province}} - {{shippingAddress.zip}}</p>
+        <p>State: {{shippingAddress.province}}</p>
+      </div>
+    </div>
+
+    <!-- Line Items Table -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 25px;" class="text-center">#</th>
+            <th>Description of Goods / Services</th>
+            <th style="width: 50px;">HSN</th>
+            <th style="width: 35px;" class="text-center">Qty</th>
+            <th style="width: 60px;" class="text-right">Unit Rate</th>
+            <th style="width: 70px;" class="text-right">Taxable</th>
+            {{#if isInterState}}
+              <th style="width: 75px;" class="text-right">IGST</th>
+            {{else}}
+              <th style="width: 65px;" class="text-right">CGST</th>
+              <th style="width: 65px;" class="text-right">SGST</th>
+            {{/if}}
+            <th style="width: 75px;" class="text-right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td class="text-center">{{@index}}</td>
+            <td>
+              <strong>{{this.title}}</strong>
+              {{#if this.sku}}<br><span style="color: #6d7175; font-size: 9px;">SKU: {{this.sku}}</span>{{/if}}
+            </td>
+            <td>{{this.hsnCode}}</td>
+            <td class="text-center">{{this.quantity}}</td>
+            <td class="text-right">₹{{this.unitPrice}}</td>
+            <td class="text-right">₹{{this.taxableAmount}}</td>
+            {{#if ../isInterState}}
+              <td class="text-right">
+                ₹{{this.igstAmount}}<br><span style="color: #6d7175; font-size: 8px;">({{this.taxRate}}%)</span>
+              </td>
+            {{else}}
+              <td class="text-right">
+                ₹{{this.cgstAmount}}<br><span style="color: #6d7175; font-size: 8px;">({{halfRate this.taxRate}}%)</span>
+              </td>
+              <td class="text-right">
+                ₹{{this.sgstAmount}}<br><span style="color: #6d7175; font-size: 8px;">({{halfRate this.taxRate}}%)</span>
+              </td>
+            {{/if}}
+            <td class="text-right"><strong>₹{{this.totalAmount}}</strong></td>
+          </tr>
+          {{/each}}
+
+          {{#if shipping.shippingGross}}
+          <tr>
+            <td class="text-center">-</td>
+            <td><strong>Shipping & Handling Charges</strong></td>
+            <td>9968</td>
+            <td class="text-center">1</td>
+            <td class="text-right">₹{{shipping.shippingGross}}</td>
+            <td class="text-right">₹{{shipping.shippingTaxable}}</td>
+            {{#if isInterState}}
+              <td class="text-right">₹{{shipping.shippingIgst}}<br><span style="font-size: 8px;">({{shipping.shippingTaxRate}}%)</span></td>
+            {{else}}
+              <td class="text-right">₹{{shipping.shippingCgst}}<br><span style="font-size: 8px;">({{halfRate shipping.shippingTaxRate}}%)</span></td>
+              <td class="text-right">₹{{shipping.shippingSgst}}<br><span style="font-size: 8px;">({{halfRate shipping.shippingTaxRate}}%)</span></td>
+            {{/if}}
+            <td class="text-right"><strong>₹{{shipping.shippingGross}}</strong></td>
+          </tr>
+          {{/if}}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Totals and Words -->
+    <div class="totals-area">
+      <div class="words-box">
+        <p style="font-size: 9px; text-transform: uppercase; color: #5c5f62; margin-bottom: 4px;"><strong>Invoice Amount in Words:</strong></p>
+        <p style="font-weight: 700;">INR {{amountInWords}} Only</p>
+        <p style="margin-top: 10px; font-size: 9px; color: #6d7175;">
+          * Whether tax is payable on reverse charge basis: <strong>NO</strong>
+        </p>
+      </div>
+
+      <div class="totals-table">
+        <table style="width: 100%;">
+          <tr>
+            <td>Total Taxable Value:</td>
+            <td class="text-right">₹{{totalTaxable}}</td>
+          </tr>
+          {{#if isInterState}}
+          <tr>
+            <td>Total IGST:</td>
+            <td class="text-right">₹{{totalIgst}}</td>
+          </tr>
+          {{else}}
+          <tr>
+            <td>Total CGST:</td>
+            <td class="text-right">₹{{totalCgst}}</td>
+          </tr>
+          <tr>
+            <td>Total SGST:</td>
+            <td class="text-right">₹{{totalSgst}}</td>
+          </tr>
+          {{/if}}
+          <tr class="grand-total">
+            <td>Grand Total (Incl. Taxes):</td>
+            <td class="text-right">₹{{grandTotal}}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- HSN Summary Table -->
+    <div style="margin-bottom: 14px;">
+      <div class="box-title">HSN / SAC Tax Summary</div>
+      <table class="hsn-summary-table">
+        <thead>
+          <tr>
+            <th>HSN/SAC</th>
+            <th class="text-right">Taxable Value</th>
+            {{#if isInterState}}
+              <th class="text-right">IGST Amount</th>
+            {{else}}
+              <th class="text-right">CGST Amount</th>
+              <th class="text-right">SGST Amount</th>
+            {{/if}}
+            <th class="text-right">Total Tax</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each hsnSummaryList}}
+          <tr>
+            <td>{{this.hsnCode}}</td>
+            <td class="text-right">₹{{this.taxableAmount}}</td>
+            {{#if ../isInterState}}
+              <td class="text-right">₹{{this.igstAmount}}</td>
+            {{else}}
+              <td class="text-right">₹{{this.cgstAmount}}</td>
+              <td class="text-right">₹{{this.sgstAmount}}</td>
+            {{/if}}
+            <td class="text-right">₹{{this.totalTax}}</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer Signatory & Terms -->
+    <div class="footer">
+      <div class="terms">
+        <strong>Terms & Conditions:</strong>
+        <p>{{#if store.termsAndConditions}}{{store.termsAndConditions}}{{else}}1. Goods once sold will only be accepted in terms of the store return policy. 2. Any disputes are subject to the local jurisdiction of the registered merchant entity.{{/if}}</p>
+      </div>
+      <div class="signatory">
+        <p>For <strong>{{store.legalName}}</strong></p>
+        <div style="height: 40px; margin: 6px 0;">
+          {{#if store.signatureUrl}}
+            <img src="{{store.signatureUrl}}" alt="Signature" class="signature-img">
+          {{/if}}
+        </div>
+        <p><strong>Authorized Signatory</strong></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

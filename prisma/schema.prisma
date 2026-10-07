@@ -1,0 +1,184 @@
+// Prisma Schema for Indian GST Invoicing Shopify App
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Store {
+  id                String    @id @default(uuid())
+  shopifyDomain     String    @unique
+  accessToken       String
+  legalName         String
+  tradeName         String?
+  gstin             String
+  stateCode         String    // Standard 2-digit GST code, e.g. "27" (Maharashtra), "29" (Karnataka)
+  registeredAddress Json      // { addressLine1, addressLine2, city, state, pincode, country }
+  
+  // Invoice Sequence Configuration
+  invoicePrefix     String    @default("INV")
+  creditNotePrefix  String    @default("CN")
+  currentFiscalYear String    // e.g. "26-27"
+  invoiceSequence   Int       @default(0)
+  creditSequence    Int       @default(0)
+
+  // Customization & Branding
+  logoUrl           String?
+  signatureUrl      String?
+  termsAndConditions String?  @db.Text
+  supportEmail      String?
+  supportPhone      String?
+  
+  // SaaS Subscription & Billing (3-Day Trial + $6, $12, $19 Tiers)
+  plan              PlanTier  @default(STARTER)
+  trialEndsAt       DateTime?
+  subscriptionId    String?
+  monthlyOrderUsage Int       @default(0)
+
+  // Relations
+  invoices          Invoice[]
+  creditNotes       CreditNote[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([shopifyDomain])
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+enum PlanTier {
+  STARTER     // $6 / month
+  GROWTH      // $12 / month
+  PRO         // $19 / month
+}
+
+model Invoice {
+  id                String        @id @default(uuid())
+  storeId           String
+  store             Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  shopifyOrderId    String        @unique
+  orderNumber       String
+  invoiceNumber     String        // Unique Formatted: INV/26-27/0042
+  invoiceDate       DateTime      @default(now())
+  
+  // Place of Supply & Tax Categorization
+  posStateCode      String        // Buyer State 2-digit GST Code
+  isInterState      Boolean       // true = IGST, false = CGST + SGST
+  
+  // Financial Totals
+  totalTaxable      Decimal       @db.Decimal(12, 2)
+  totalCgst         Decimal       @db.Decimal(12, 2)
+  totalSgst         Decimal       @db.Decimal(12, 2)
+  totalIgst         Decimal       @db.Decimal(12, 2)
+  shippingTaxable   Decimal       @default(0.00) @db.Decimal(12, 2)
+  shippingTaxRate   Decimal       @default(18.00) @db.Decimal(5, 2)
+  shippingCgst      Decimal       @default(0.00) @db.Decimal(12, 2)
+  shippingSgst      Decimal       @default(0.00) @db.Decimal(12, 2)
+  shippingIgst      Decimal       @default(0.00) @db.Decimal(12, 2)
+  grandTotal        Decimal       @db.Decimal(12, 2)
+  
+  // B2B Statutory Details
+  buyerGstin        String?       // 15-character statutory GSTIN
+  buyerCompanyName  String?
+  buyerAddress      Json?         // Snapshot of buyer shipping & billing address
+  
+  // Delivery & Sync Status
+  status            InvoiceStatus @default(GENERATED)
+  pdfUrl            String?
+  shopifyMetafieldSynced Boolean   @default(false)
+  emailDispatched   Boolean       @default(false)
+
+  // Relations
+  items             InvoiceItem[]
+  creditNote        CreditNote?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([storeId, invoiceNumber])
+  @@index([storeId, createdAt])
+  @@index([buyerGstin])
+}
+
+model InvoiceItem {
+  id              String   @id @default(uuid())
+  invoiceId       String
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  title           String
+  sku             String?
+  hsnCode         String   // Statutory Harmonized System of Nomenclature (4, 6, or 8 digits)
+  quantity        Int
+  unitPrice       Decimal  @db.Decimal(12, 2) // Original unit sale price
+  taxRate         Decimal  @db.Decimal(5, 2)  // e.g. 5.00, 12.00, 18.00, 28.00
+  taxableAmount   Decimal  @db.Decimal(12, 2) // Base taxable value excluding GST
+  cgstAmount      Decimal  @db.Decimal(12, 2)
+  sgstAmount      Decimal  @db.Decimal(12, 2)
+  igstAmount      Decimal  @db.Decimal(12, 2)
+  cessAmount      Decimal  @default(0.00) @db.Decimal(12, 2)
+  totalAmount     Decimal  @db.Decimal(12, 2) // Taxable + taxes
+
+  @@index([invoiceId])
+  @@index([hsnCode])
+}
+
+model CreditNote {
+  id              String            @id @default(uuid())
+  storeId         String
+  store           Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  invoiceId       String            @unique
+  invoice         Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  shopifyRefundId String?           @unique
+  creditNoteNo    String            // Formatted: CN/26-27/0015
+  refundAmount    Decimal           @db.Decimal(12, 2)
+  reason          String            // e.g. "Customer Cancellation", "Return", "Discount adjustment"
+  pdfUrl          String?
+  status          CreditNoteStatus  @default(ISSUED)
+  createdAt       DateTime          @default(now())
+
+  @@unique([storeId, creditNoteNo])
+  @@index([storeId, createdAt])
+}
+
+model QueueJobLog {
+  id          String    @id @default(uuid())
+  jobType     String    // "TAX_CALCULATION", "PDF_GENERATION", "SYNC_SHOPIFY"
+  orderId     String
+  status      String    // "PENDING", "COMPLETED", "FAILED"
+  attempt     Int       @default(1)
+  error       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([orderId, jobType])
+}
+
+enum InvoiceStatus {
+  PENDING
+  GENERATED
+  DELIVERED
+  CANCELLED
+}
+
+enum CreditNoteStatus {
+  ISSUED
+  DELIVERED
+  CANCELLED
+}
