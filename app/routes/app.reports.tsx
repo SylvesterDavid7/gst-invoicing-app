@@ -3,7 +3,7 @@ import {
   type ActionFunctionArgs,
   type LoaderFunctionArgs
 } from "@remix-run/node";
-import { Form, useNavigation } from "@remix-run/react";
+import { useNavigation } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -93,10 +93,7 @@ export default function ReportsPage() {
       <Layout>
         <Layout.Section>
           <Card>
-            <Form method="post" reloadDocument>
-              <input type="hidden" name="month" value={month} />
-              <input type="hidden" name="year" value={year} />
-
+            <div>
               <BlockStack gap="400">
                 <Text as="h2" variant="headingMd">
                   Select Return Period
@@ -120,17 +117,30 @@ export default function ReportsPage() {
                   </div>
                 </div>
 
-                <div>
-                  <Button
-                    submit
-                    variant="primary"
-                    loading={isExporting}
+                <div style={{ marginTop: "12px" }}>
+                  <a
+                    href={`/api/reports/gstr1?month=${month}&year=${year}`}
+                    download
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      backgroundColor: "#008060",
+                      color: "#ffffff",
+                      padding: "10px 22px",
+                      borderRadius: "8px",
+                      textDecoration: "none",
+                      fontWeight: 600,
+                      fontSize: "14px",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                      cursor: "pointer"
+                    }}
                   >
-                    Download GSTR-1 Excel (.xlsx)
-                  </Button>
+                    📥 Download GSTR-1 Excel (.xlsx)
+                  </a>
                 </div>
               </BlockStack>
-            </Form>
+            </div>
           </Card>
         </Layout.Section>
 
