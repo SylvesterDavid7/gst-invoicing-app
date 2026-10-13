@@ -60,11 +60,15 @@ export default function InvoicesListPage() {
       <Button url={`/app/receipt/${inv.id}`} target="_blank" size="micro">
         🖨️ POS Receipt
       </Button>
-      {inv.pdfUrl ? (
-        <Button url={inv.pdfUrl} target="_blank" size="micro" variant="plain">
-          A4 PDF
-        </Button>
-      ) : (
+      {inv.pdfUrl ? (() => {
+        const match = inv.pdfUrl.match(/\/invoices\/[^\s'"]+/);
+        const pdfHref = match ? match[0] : (inv.pdfUrl.startsWith("/") ? inv.pdfUrl : `/${inv.pdfUrl}`);
+        return (
+          <Button url={pdfHref} target="_blank" size="micro" variant="plain">
+            A4 PDF
+          </Button>
+        );
+      })() : (
         <Text as="span" tone="subdued">PDF Pending</Text>
       )}
     </InlineStack>

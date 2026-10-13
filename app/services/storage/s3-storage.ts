@@ -27,9 +27,9 @@ export async function uploadInvoicePdf(
     const filePath = path.join(localDir, fileName);
     fs.writeFileSync(filePath, pdfBuffer);
 
-    const baseUrl = process.env.APP_URL || process.env.HOST || "http://localhost:3000";
+    const relativeUrl = `/invoices/${safeDomain}/${fileName}`;
     return {
-      url: `${baseUrl}/invoices/${safeDomain}/${fileName}`,
+      url: relativeUrl,
       key: s3Key
     };
   }

@@ -81,16 +81,20 @@ export default function PosReceiptPage() {
             <option value="58mm">58mm (Compact Mobile)</option>
           </select>
 
-          {invoice.pdfUrl && (
-            <a
-              href={invoice.pdfUrl}
-              target="_blank"
-              rel="noreferrer"
-              style={{ textDecoration: "none", padding: "8px 14px", borderRadius: "6px", background: "#f3f4f6", color: "#374151", fontWeight: 600, fontSize: "13px" }}
-            >
-              Full A4 PDF
-            </a>
-          )}
+          {invoice.pdfUrl && (() => {
+            const match = invoice.pdfUrl.match(/\/invoices\/[^\s'"]+/);
+            const pdfHref = match ? match[0] : (invoice.pdfUrl.startsWith("/") ? invoice.pdfUrl : `/${invoice.pdfUrl}`);
+            return (
+              <a
+                href={pdfHref}
+                target="_blank"
+                rel="noreferrer"
+                style={{ textDecoration: "none", padding: "8px 14px", borderRadius: "6px", background: "#f3f4f6", color: "#374151", fontWeight: 600, fontSize: "13px" }}
+              >
+                Full A4 PDF
+              </a>
+            );
+          })()}
 
           <button
             onClick={() => window.print()}
