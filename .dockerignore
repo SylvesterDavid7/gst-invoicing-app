@@ -5,3 +5,5 @@ build
 .env
 npm-debug.log
 .vscode
+public/invoices
+public/demo-output

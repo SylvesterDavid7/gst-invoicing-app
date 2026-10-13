@@ -8,6 +8,7 @@ export default function AppLayout() {
 
   const navItems = [
     { label: "Dashboard", path: "/app" },
+    { label: "Manual Billing (POS)", path: "/app/billing" },
     { label: "Invoices", path: "/app/invoices" },
     { label: "Settings", path: "/app/settings" },
     { label: "GSTR-1 Exports", path: "/app/reports" },

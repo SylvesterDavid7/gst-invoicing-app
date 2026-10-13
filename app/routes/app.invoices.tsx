@@ -56,13 +56,18 @@ export default function InvoicesListPage() {
     inv.isInterState ? "IGST" : "CGST+SGST",
     `₹${inv.grandTotal}`,
     inv.creditNote ? <Badge tone="critical">{inv.creditNote.creditNoteNo}</Badge> : <Badge tone="success">Active</Badge>,
-    inv.pdfUrl ? (
-      <Button url={inv.pdfUrl} target="_blank" size="micro" variant="plain">
-        Download PDF
+    <InlineStack gap="100" wrap={false}>
+      <Button url={`/app/receipt/${inv.id}`} target="_blank" size="micro">
+        🖨️ POS Receipt
       </Button>
-    ) : (
-      <Text as="span" tone="subdued">Pending</Text>
-    )
+      {inv.pdfUrl ? (
+        <Button url={inv.pdfUrl} target="_blank" size="micro" variant="plain">
+          A4 PDF
+        </Button>
+      ) : (
+        <Text as="span" tone="subdued">PDF Pending</Text>
+      )}
+    </InlineStack>
   ]);
 
   return (
@@ -70,6 +75,7 @@ export default function InvoicesListPage() {
       title="Tax Invoices & Credit Notes"
       subtitle="Complete chronological audit trail of all issued GST statutory documents"
       backAction={{ content: "Dashboard", url: "/app" }}
+      primaryAction={{ content: "+ Create POS Bill", url: "/app/billing" }}
     >
       <BlockStack gap="400">
         <Card>

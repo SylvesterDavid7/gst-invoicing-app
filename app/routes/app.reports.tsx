@@ -146,16 +146,19 @@ export default function ReportsPage() {
               </Text>
               <List type="bullet">
                 <List.Item>
-                  <strong>Table 4 (b2b):</strong> Invoices with customer GSTIN eligible for Input Tax Credit (ITC).
+                  <strong>Table 4 (b2b):</strong> Invoices to registered customers with GSTIN eligible for Input Tax Credit (ITC). Captures invoice-level outward B2B taxable supplies.
                 </List.Item>
                 <List.Item>
-                  <strong>Table 5 (b2cl):</strong> Inter-state B2C orders with invoice value exceeding ₹2,50,000.
+                  <strong>Table 5 (b2cl):</strong> Inter-state B2C orders exceeding <strong>₹1,00,000</strong> (updated per statutory Notification No. 12/2024).
                 </List.Item>
                 <List.Item>
-                  <strong>Table 7 (b2cs):</strong> Intra-state retail supplies + Inter-state supplies up to ₹2.5 Lakh.
+                  <strong>Table 7 (b2cs):</strong> Consolidated intra-state retail + smaller inter-state supplies (up to ₹1,00,000) grouped by Place of Supply and tax rate.
                 </List.Item>
                 <List.Item>
-                  <strong>Table 12 (hsn):</strong> Mandatory Harmonized System of Nomenclature quantity and tax breakdown summary.
+                  <strong>Table 12 (hsn):</strong> Mandatory HSN/SAC quantity and tax breakdown summary, split into B2B and B2C summaries (plus dedicated <code>hsn_b2b</code> and <code>hsn_b2c</code> worksheets).
+                </List.Item>
+                <List.Item>
+                  <strong>Table 13 (docs):</strong> Statutory Document Summary (Invoice serial number range from-to, total issued, cancelled, and net issued).
                 </List.Item>
               </List>
             </BlockStack>

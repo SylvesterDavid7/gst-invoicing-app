@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Tell Puppeteer to use the installed Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-ENV NODE_ENV=production
 ENV PORT=3000
 
 WORKDIR /app
@@ -24,8 +23,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
 
-# Install all dependencies (including devDependencies needed for build)
-RUN npm ci
+# Install all dependencies (including devDependencies required for build step)
+RUN npm install --legacy-peer-deps
 
 # Generate Prisma Client types
 RUN npx prisma generate
@@ -33,8 +32,11 @@ RUN npx prisma generate
 # Copy source code
 COPY . .
 
-# Build Remix Vite SSR & Client bundles
+# Build Remix Vite SSR & Client production bundles
 RUN npm run build
+
+# Switch to production environment
+ENV NODE_ENV=production
 
 EXPOSE 3000
 
