@@ -1,6 +1,9 @@
 import { Worker, Job } from "bullmq";
 import { PrismaClient } from "@prisma/client";
 import { redisConnection } from "../redis";
+import fs from "fs";
+import path from "path";
+import { sendInvoiceEmail } from "../../email/invoice-mailer";
 
 const prisma = new PrismaClient();
 
@@ -106,6 +109,43 @@ export function startSyncWorker() {
           status: "DELIVERED"
         }
       });
+
+      // Automated Customer Emailing
+      try {
+        const buyerInfo = invoice.buyerAddress as any;
+        const recipientEmail = buyerInfo?.email || buyerInfo?.shipping?.email || buyerInfo?.billing?.email;
+        const customerName = buyerInfo?.customerName || buyerInfo?.shipping?.name || "Customer";
+
+        if (recipientEmail) {
+          let pdfBuf: Buffer | undefined;
+          const safeDomain = store.shopifyDomain.replace(/[^a-zA-Z0-9]/g, "_");
+          const safeFileName = `${invoice.invoiceNumber.replace(/\//g, "-")}.pdf`;
+          const localPath = path.join(process.cwd(), "public", "invoices", safeDomain, safeFileName);
+          if (fs.existsSync(localPath)) {
+            pdfBuf = fs.readFileSync(localPath);
+          }
+
+          const emailSent = await sendInvoiceEmail({
+            toEmail: recipientEmail,
+            customerName,
+            invoiceNumber: invoice.invoiceNumber,
+            orderNumber: invoice.orderNumber,
+            grandTotal: String(invoice.grandTotal),
+            pdfUrl: invoice.pdfUrl,
+            storeName: store.tradeName || store.legalName,
+            pdfBuffer: pdfBuf
+          });
+
+          if (emailSent) {
+            await prisma.invoice.update({
+              where: { id: invoice.id },
+              data: { emailDispatched: true }
+            });
+          }
+        }
+      } catch (emailErr: any) {
+        console.warn(`[SyncWorker] Automated email delivery notice: ${emailErr.message}`);
+      }
 
       return { success: true };
     },

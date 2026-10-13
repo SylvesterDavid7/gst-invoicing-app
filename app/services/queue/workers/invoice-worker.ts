@@ -134,7 +134,9 @@ export function startInvoiceWorker() {
               buyerCompanyName,
               buyerAddress: {
                 shipping: order.shipping_address,
-                billing: order.billing_address
+                billing: order.billing_address,
+                email: order.email || order.contact_email || order.customer?.email,
+                customerName: `${order.customer?.first_name || ""} ${order.customer?.last_name || ""}`.trim() || order.shipping_address?.name
               },
               items: {
                 create: taxSummary.items.map((item) => ({
