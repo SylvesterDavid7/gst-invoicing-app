@@ -26,7 +26,7 @@ function ThankYouInvoiceBlock() {
     (attr) => attr.key === "gstin" || attr.key === "business_gstin"
   )?.value;
 
-  const downloadUrl = `/api/invoices/download?order_id=${order.id}`;
+  const downloadUrl = `https://itskoop.inaragroups.com/api/invoices/download?order_id=${order.id}`;
 
   return (
     <View
