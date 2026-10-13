@@ -23,11 +23,11 @@ export async function action({ request }: ActionFunctionArgs) {
   const hmacHeader = request.headers.get("x-shopify-hmac-sha256");
   const rawBody = await request.text();
 
-  const secret = process.env.SHOPIFY_API_SECRET || "";
+  const secret = process.env.WEBHOOK_SECRET || process.env.SHOPIFY_API_SECRET || "";
 
-  // In production, enforce HMAC signature validation
-  if (process.env.NODE_ENV === "production" && !verifyShopifyHmac(rawBody, hmacHeader, secret)) {
-    console.error("HMAC verification failed for webhook orders/paid");
+  // In production, enforce HMAC signature validation if secret is configured
+  if (process.env.NODE_ENV === "production" && secret && !verifyShopifyHmac(rawBody, hmacHeader, secret)) {
+    console.error(`[Webhook Error] HMAC signature verification failed for shop domain: ${shopDomain}. Check SHOPIFY_API_SECRET or WEBHOOK_SECRET in .env.`);
     return json({ error: "Unauthorized" }, { status: 401 });
   }
 

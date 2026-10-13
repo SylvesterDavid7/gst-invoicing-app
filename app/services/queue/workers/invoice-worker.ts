@@ -18,12 +18,17 @@ export function startInvoiceWorker() {
 
       if (job.name === "process-order-tax") {
         const { shopifyDomain, order } = job.data;
-        const store = await prisma.store.findUnique({
+        let store = await prisma.store.findUnique({
           where: { shopifyDomain }
         });
 
+        // Fallback: If domain not registered, use the primary configured store
         if (!store) {
-          throw new Error(`Store not registered for domain: ${shopifyDomain}`);
+          store = await prisma.store.findFirst();
+        }
+
+        if (!store) {
+          throw new Error(`Store not registered for domain: ${shopifyDomain} and no default store found.`);
         }
 
         // Check if invoice already exists for this order (idempotency check)

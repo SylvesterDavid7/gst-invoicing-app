@@ -102,29 +102,18 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const shopDomain = "quickstart-demo.myshopify.com";
+  let store = await prisma.store.findFirst();
 
-  let store = await prisma.store.findUnique({
-    where: { shopifyDomain: shopDomain }
+  const recentInvoices = await prisma.invoice.findMany({
+    orderBy: { invoiceDate: "desc" },
+    take: 10
   });
 
-  const recentInvoices = store
-    ? await prisma.invoice.findMany({
-        where: { storeId: store.id },
-        orderBy: { invoiceDate: "desc" },
-        take: 10
-      })
-    : [];
+  const totalInvoicesCount = await prisma.invoice.count();
 
-  const totalInvoicesCount = store
-    ? await prisma.invoice.count({ where: { storeId: store.id } })
-    : 0;
-
-  const b2bInvoicesCount = store
-    ? await prisma.invoice.count({
-        where: { storeId: store.id, buyerGstin: { not: null } }
-      })
-    : 0;
+  const b2bInvoicesCount = await prisma.invoice.count({
+    where: { buyerGstin: { not: null } }
+  });
 
   // Queue health metrics
   let queueStats = { processing: 0, rendering: 0, sync: 0 };

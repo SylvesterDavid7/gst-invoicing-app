@@ -15,20 +15,11 @@ import { useState } from "react";
 import { prisma } from "../db.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const shopDomain = "quickstart-demo.myshopify.com";
-
-  const store = await prisma.store.findUnique({
-    where: { shopifyDomain: shopDomain }
+  const invoices = await prisma.invoice.findMany({
+    include: { creditNote: true },
+    orderBy: { invoiceDate: "desc" },
+    take: 100
   });
-
-  const invoices = store
-    ? await prisma.invoice.findMany({
-        where: { storeId: store.id },
-        include: { creditNote: true },
-        orderBy: { invoiceDate: "desc" },
-        take: 50
-      })
-    : [];
 
   return json({ invoices });
 }
