@@ -9,17 +9,19 @@ import path from "path";
  */
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
-  const orderId = url.searchParams.get("order_id");
-  const invoiceNumber = url.searchParams.get("invoice_number");
+  const orderId = url.searchParams.get("order_id") || url.searchParams.get("orderId");
+  const orderNumber = url.searchParams.get("order_number") || url.searchParams.get("orderNumber") || url.searchParams.get("order");
+  const invoiceNumber = url.searchParams.get("invoice_number") || url.searchParams.get("invoiceNumber");
 
-  if (!orderId && !invoiceNumber) {
-    return new Response("Order ID or Invoice Number required", { status: 400 });
+  if (!orderId && !orderNumber && !invoiceNumber) {
+    return new Response("Order ID, Order Number, or Invoice Number required", { status: 400 });
   }
 
   const invoice = await prisma.invoice.findFirst({
     where: {
       OR: [
         ...(orderId ? [{ shopifyOrderId: orderId }] : []),
+        ...(orderNumber ? [{ orderNumber: String(orderNumber).replace(/^#/, "") }] : []),
         ...(invoiceNumber ? [{ invoiceNumber }] : [])
       ]
     },
