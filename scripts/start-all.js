@@ -6,10 +6,14 @@ console.log("   1. Remix Web Server (Port " + (process.env.PORT || 3000) + ")");
 console.log("   2. BullMQ Worker Daemon (Chromium PDF & Tax)  ");
 console.log("==================================================");
 
+// Ensure public URL is preserved for application services while remix-serve binds to 0.0.0.0
+const publicUrl = process.env.APP_URL || process.env.HOST;
+const webEnv = { ...process.env, HOST: "0.0.0.0", APP_URL: publicUrl };
+
 const web = spawn("npx", ["remix-serve", "./build/server/index.js"], {
   stdio: "inherit",
   shell: true,
-  env: process.env
+  env: webEnv
 });
 
 const worker = spawn("npx", ["tsx", "src/workers/index.ts"], {

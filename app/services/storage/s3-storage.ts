@@ -27,7 +27,7 @@ export async function uploadInvoicePdf(
     const filePath = path.join(localDir, fileName);
     fs.writeFileSync(filePath, pdfBuffer);
 
-    const baseUrl = process.env.HOST || "http://localhost:3000";
+    const baseUrl = process.env.APP_URL || process.env.HOST || "http://localhost:3000";
     return {
       url: `${baseUrl}/invoices/${safeDomain}/${fileName}`,
       key: s3Key
