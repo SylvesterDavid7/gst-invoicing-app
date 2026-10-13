@@ -10,7 +10,7 @@ dotenv.config();
 
 import Redis from "ioredis";
 
-const redisUrl = process.env.REDIS_URL;
+const redisUrl = process.env.REDIS_URL || process.env.REDIS_URI || process.env.NF_REDIS_URI;
 const redisHost = process.env.REDIS_HOST || "127.0.0.1";
 const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
 const redisPassword = process.env.REDIS_PASSWORD || undefined;
