@@ -3,7 +3,7 @@ import {
   type ActionFunctionArgs,
   type LoaderFunctionArgs
 } from "@remix-run/node";
-import { useSubmit, useNavigation } from "@remix-run/react";
+import { Form, useNavigation } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -12,7 +12,6 @@ import {
   Text,
   Select,
   Button,
-  Banner,
   List
 } from "@shopify/polaris";
 import { useState } from "react";
@@ -25,13 +24,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
-  const month = parseInt(String(formData.get("month") || "3"), 10);
+  const month = parseInt(String(formData.get("month") || "10"), 10);
   const year = parseInt(String(formData.get("year") || "2026"), 10);
 
-  const shopDomain = "quickstart-demo.myshopify.com";
-  const store = await prisma.store.findUnique({
-    where: { shopifyDomain: shopDomain }
-  });
+  // Fetch store from database
+  const store = await prisma.store.findFirst();
 
   if (!store) {
     return json({ error: "Store not configured" }, { status: 400 });
@@ -59,7 +56,6 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function ReportsPage() {
-  const submit = useSubmit();
   const navigation = useNavigation();
 
   const [month, setMonth] = useState("10"); // October
@@ -86,55 +82,55 @@ export default function ReportsPage() {
     { label: "2027", value: "2027" }
   ];
 
-  const handleExport = () => {
-    const fd = new FormData();
-    fd.append("month", month);
-    fd.append("year", year);
-    submit(fd, { method: "POST" });
-  };
-
   const isExporting = navigation.state === "submitting";
 
   return (
     <Page
       title="CA Reporting & GSTR-1 Exports"
-      subtitle="Export government-compliant GSTR-1 Excel workbooks partitioned into Tables 4, 5, 7 & 12"
+      subtitle="Export government-compliant GSTR-1 Excel workbooks partitioned into Tables 4, 5, 7, 12 & 13"
       backAction={{ content: "Dashboard", url: "/app" }}
     >
       <Layout>
         <Layout.Section>
           <Card>
-            <BlockStack gap="400">
-              <Text as="h2" variant="headingMd">
-                Select Return Period
-              </Text>
-              <div style={{ display: "flex", gap: "16px" }}>
-                <div style={{ flex: 1 }}>
-                  <Select
-                    label="Filing Month"
-                    options={monthOptions}
-                    value={month}
-                    onChange={setMonth}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <Select
-                    label="Filing Year"
-                    options={yearOptions}
-                    value={year}
-                    onChange={setYear}
-                  />
-                </div>
-              </div>
+            <Form method="post" reloadDocument>
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="year" value={year} />
 
-              <Button
-                variant="primary"
-                onClick={handleExport}
-                loading={isExporting}
-              >
-                Download GSTR-1 Excel (.xlsx)
-              </Button>
-            </BlockStack>
+              <BlockStack gap="400">
+                <Text as="h2" variant="headingMd">
+                  Select Return Period
+                </Text>
+                <div style={{ display: "flex", gap: "16px" }}>
+                  <div style={{ flex: 1 }}>
+                    <Select
+                      label="Filing Month"
+                      options={monthOptions}
+                      value={month}
+                      onChange={setMonth}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Select
+                      label="Filing Year"
+                      options={yearOptions}
+                      value={year}
+                      onChange={setYear}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Button
+                    submit
+                    variant="primary"
+                    loading={isExporting}
+                  >
+                    Download GSTR-1 Excel (.xlsx)
+                  </Button>
+                </div>
+              </BlockStack>
+            </Form>
           </Card>
         </Layout.Section>
 
