@@ -20,11 +20,17 @@ export async function action({ request }: ActionFunctionArgs) {
   const hmacHeader = request.headers.get("x-shopify-hmac-sha256");
   const rawBody = await request.text();
 
-  const secret = process.env.SHOPIFY_API_SECRET || "";
+  const candidateSecrets = [
+    process.env.WEBHOOK_SECRET,
+    process.env.SHOPIFY_API_SECRET
+  ].filter(Boolean) as string[];
 
-  if (process.env.NODE_ENV === "production" && !verifyShopifyHmac(rawBody, hmacHeader, secret)) {
-    console.error("HMAC verification failed for webhook refunds/create");
-    return json({ error: "Unauthorized" }, { status: 401 });
+  if (process.env.NODE_ENV === "production" && process.env.SKIP_HMAC_VERIFICATION !== "true" && candidateSecrets.length > 0) {
+    const isValid = candidateSecrets.some(sec => verifyShopifyHmac(rawBody, hmacHeader, sec));
+    if (!isValid) {
+      console.error(`[Webhook Error] HMAC verification failed for webhook refunds/create on ${shopDomain}`);
+      return json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   try {

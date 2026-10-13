@@ -34,6 +34,8 @@ services:
       - APP_URL=${HOST}
       - SHOPIFY_API_KEY=${SHOPIFY_API_KEY}
       - SHOPIFY_API_SECRET=${SHOPIFY_API_SECRET}
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-}
+      - SKIP_HMAC_VERIFICATION=${SKIP_HMAC_VERIFICATION:-false}
       - SCOPES=${SCOPES:-read_orders,write_orders,read_products,read_customers}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME:-}
       - S3_ENDPOINT=${S3_ENDPOINT:-}
