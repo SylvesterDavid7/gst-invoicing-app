@@ -3,20 +3,18 @@ import { Outlet, useLocation, Link, useLoaderData } from "@remix-run/react";
 import { AppProvider } from "@shopify/polaris";
 import enTranslations from "@shopify/polaris/locales/en.json";
 import "@shopify/polaris/build/esm/styles.css";
-import { getActiveStore, getAllStores } from "../services/store/store.server";
+import { getActiveStore } from "../services/store/store.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const activeStore = await getActiveStore(request);
-  const stores = await getAllStores();
 
   return json({
-    activeStore,
-    stores
+    activeStore
   });
 }
 
 export default function AppLayout() {
-  const { activeStore, stores } = useLoaderData<typeof loader>();
+  const { activeStore } = useLoaderData<typeof loader>();
   const location = useLocation();
 
   const shopQuery = activeStore ? `?shop=${encodeURIComponent(activeStore.shopifyDomain)}` : "";
@@ -87,34 +85,22 @@ export default function AppLayout() {
               })}
             </nav>
 
-            {/* Multi-Tenant Store Switcher */}
-            {stores.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#f1f2f4", padding: "4px 10px", borderRadius: "8px" }}>
-                <span style={{ fontSize: "12px", color: "#444746", fontWeight: 600 }}>🏬 Store:</span>
-                <select
-                  value={activeStore?.shopifyDomain || ""}
-                  onChange={(e) => {
-                    const domain = e.target.value;
-                    document.cookie = `active_shop=${encodeURIComponent(domain)}; path=/; max-age=31536000`;
-                    window.location.href = `${window.location.pathname}?shop=${encodeURIComponent(domain)}`;
-                  }}
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: "6px",
-                    border: "1px solid #c9cccf",
-                    fontSize: "12px",
-                    background: "#ffffff",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    outline: "none"
-                  }}
-                >
-                  {stores.map((s: any) => (
-                    <option key={s.id} value={s.shopifyDomain}>
-                      {s.tradeName || s.legalName} ({s.shopifyDomain})
-                    </option>
-                  ))}
-                </select>
+            {/* Merchant's Connected Store Identity (Tenant Isolated) */}
+            {activeStore && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  background: "#f1f8f5",
+                  border: "1px solid #b7ece0",
+                  padding: "4px 10px",
+                  borderRadius: "8px"
+                }}
+              >
+                <span style={{ fontSize: "12px", color: "#008060", fontWeight: 700 }}>
+                  🏬 {activeStore.tradeName || activeStore.shopifyDomain}
+                </span>
               </div>
             )}
           </div>

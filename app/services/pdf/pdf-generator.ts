@@ -19,11 +19,28 @@ Handlebars.registerHelper("@index", function (options: any) {
   return (options.data?.index ?? 0) + 1;
 });
 
-const templatePath = path.join(__dirname, "template.html");
+function findTemplatePath(): string {
+  const candidates = [
+    path.join(__dirname, "template.html"),
+    path.join(process.cwd(), "app", "services", "pdf", "template.html"),
+    path.join(process.cwd(), "build", "server", "template.html"),
+    path.resolve(__dirname, "../../app/services/pdf/template.html")
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return path.join(process.cwd(), "app", "services", "pdf", "template.html");
+}
+
 let cachedTemplate: HandlebarsTemplateDelegate | null = null;
 
 function getTemplate(): HandlebarsTemplateDelegate {
   if (!cachedTemplate) {
+    const templatePath = findTemplatePath();
     const rawHtml = fs.readFileSync(templatePath, "utf-8");
     cachedTemplate = Handlebars.compile(rawHtml);
   }

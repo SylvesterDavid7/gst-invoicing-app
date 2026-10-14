@@ -1,10 +1,25 @@
 import { spawn } from "child_process";
+import fs from "fs";
+import path from "path";
 
 console.log("==================================================");
 console.log("   LAUNCHING PRODUCTION SERVICES CONCURRENTLY    ");
 console.log("   1. Remix Web Server (Port " + (process.env.PORT || 3000) + ")");
 console.log("   2. BullMQ Worker Daemon (Chromium PDF & Tax)  ");
 console.log("==================================================");
+
+// Ensure template.html is in build/server for compiled Remix Vite runtime
+const srcTemplate = path.join(process.cwd(), "app", "services", "pdf", "template.html");
+const destTemplate = path.join(process.cwd(), "build", "server", "template.html");
+try {
+  if (fs.existsSync(srcTemplate)) {
+    fs.mkdirSync(path.dirname(destTemplate), { recursive: true });
+    fs.copyFileSync(srcTemplate, destTemplate);
+    console.log("[Asset Check] Verified & synced template.html to build/server");
+  }
+} catch (e) {
+  console.warn("[Asset Check] Could not copy template.html:", e.message);
+}
 
 // Ensure public URL is preserved for application services while remix-serve binds to 0.0.0.0
 const publicUrl = process.env.APP_URL || process.env.HOST;
