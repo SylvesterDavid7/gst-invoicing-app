@@ -18,7 +18,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (shopParam) {
     headers.append(
       "Set-Cookie",
-      `active_shop=${encodeURIComponent(shopParam)}; Path=/; Max-Age=31536000; SameSite=Lax`
+      `active_shop=${encodeURIComponent(shopParam)}; Path=/; Max-Age=31536000; SameSite=None; Secure`
     );
   }
 

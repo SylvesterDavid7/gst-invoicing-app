@@ -1,7 +1,8 @@
-import { type MetaFunction, json, type LoaderFunctionArgs } from "@remix-run/node";
+import { type MetaFunction, json, redirect, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
 import { useState } from "react";
 import { BILLING_PLANS } from "../services/billing/billing-plans";
+import { ensureStoreExists } from "../services/store/store.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -17,10 +18,30 @@ export const meta: MetaFunction = () => {
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const shop = url.searchParams.get("shop");
+
+  // When launched from Shopify Admin (or with ?shop= parameter), redirect directly into the store app!
+  if (shop) {
+    await ensureStoreExists(shop);
+    const search = url.search;
+    const headers = new Headers();
+    headers.append(
+      "Set-Cookie",
+      `active_shop=${encodeURIComponent(shop)}; Path=/; Max-Age=31536000; SameSite=None; Secure`
+    );
+    return redirect(`/app${search}`, { headers });
+  }
+
+  // Check if merchant already has an active shop cookie
+  const cookieHeader = request.headers.get("Cookie") || "";
+  const match = cookieHeader.match(/active_shop=([^;]+)/);
+  const shopCookie = match ? decodeURIComponent(match[1]) : null;
+  if (shopCookie && !url.searchParams.has("auth")) {
+    return redirect(`/app?shop=${encodeURIComponent(shopCookie)}`);
+  }
+
   const authRequired = url.searchParams.get("auth") === "required";
 
   return json({
-    shop,
     authRequired,
     plans: Object.values(BILLING_PLANS)
   });
@@ -38,7 +59,7 @@ export default function LandingPage() {
       domain = `${domain}.myshopify.com`;
     }
     // Set cookie and redirect to app with shop parameter to begin merchant session
-    document.cookie = `active_shop=${encodeURIComponent(domain)}; path=/; max-age=31536000; SameSite=Lax`;
+    document.cookie = `active_shop=${encodeURIComponent(domain)}; path=/; max-age=31536000; SameSite=None; Secure`;
     window.location.href = `/app?shop=${encodeURIComponent(domain)}`;
   };
 
