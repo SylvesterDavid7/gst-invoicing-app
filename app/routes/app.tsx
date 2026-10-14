@@ -17,51 +17,7 @@ export default function AppLayout() {
   const { activeStore } = useLoaderData<typeof loader>();
   const location = useLocation();
 
-  if (!activeStore) {
-    return (
-      <AppProvider i18n={enTranslations}>
-        <div style={{ background: "#f6f6f7", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
-          <div style={{ background: "#ffffff", maxWidth: "480px", width: "100%", borderRadius: "12px", border: "1px solid #dcdcdc", padding: "36px", textAlign: "center", boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
-            <div style={{ fontSize: "42px", marginBottom: "16px" }}>🔒</div>
-            <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#202223", marginBottom: "8px" }}>Store Authentication Required</h2>
-            <p style={{ fontSize: "14px", color: "#6d7175", lineHeight: 1.5, marginBottom: "24px" }}>
-              To ensure strict data privacy, each store's invoices and GST filings are strictly isolated. Please open this app from your <strong>Shopify Admin</strong> panel, or enter your store domain below.
-            </p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const form = e.currentTarget;
-                const input = form.elements.namedItem("shop") as HTMLInputElement;
-                let shop = input.value.trim().toLowerCase();
-                if (shop && !shop.includes(".")) shop += ".myshopify.com";
-                if (shop) {
-                  document.cookie = `active_shop=${encodeURIComponent(shop)}; path=/; max-age=31536000`;
-                  window.location.href = `/app?shop=${encodeURIComponent(shop)}`;
-                }
-              }}
-              style={{ display: "flex", flexDirection: "column", gap: "12px" }}
-            >
-              <input
-                type="text"
-                name="shop"
-                placeholder="e.g. xbrews-gst-demo.myshopify.com"
-                required
-                style={{ padding: "10px 14px", borderRadius: "8px", border: "1px solid #c9cccf", fontSize: "14px", outline: "none" }}
-              />
-              <button
-                type="submit"
-                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", background: "#008060", color: "#ffffff", fontWeight: 600, fontSize: "14px", cursor: "pointer" }}
-              >
-                Access Store Dashboard &rarr;
-              </button>
-            </form>
-          </div>
-        </div>
-      </AppProvider>
-    );
-  }
-
-  const shopQuery = `?shop=${encodeURIComponent(activeStore.shopifyDomain)}`;
+  const shopQuery = activeStore ? `?shop=${encodeURIComponent(activeStore.shopifyDomain)}` : "";
 
   const navItems = [
     { label: "Dashboard", path: "/app" },
