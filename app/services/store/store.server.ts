@@ -16,7 +16,7 @@ export async function getActiveStore(request: Request) {
   const match = cookieHeader.match(/active_shop=([^;]+)/);
   const shopCookie = match ? decodeURIComponent(match[1]) : null;
 
-  const targetDomain = shopParam || shopCookie;
+  const targetDomain = shopParam || shopCookie || process.env.DEFAULT_STORE_DOMAIN;
 
   if (targetDomain) {
     const store = await prisma.store.findUnique({
@@ -25,21 +25,8 @@ export async function getActiveStore(request: Request) {
     if (store) return store;
   }
 
-  // Fallback to the most recently updated store
-  const store = await prisma.store.findFirst({
-    orderBy: { updatedAt: "desc" }
-  });
-
-  return store;
-}
-
-/**
- * Lists all registered stores for the store switcher
- */
-export async function getAllStores() {
-  return prisma.store.findMany({
-    orderBy: { shopifyDomain: "asc" }
-  });
+  // Strict multi-tenant isolation: Never return another merchant's data
+  return null;
 }
 
 /**

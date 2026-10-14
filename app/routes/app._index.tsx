@@ -19,12 +19,11 @@ import { invoiceProcessingQueue, pdfRenderingQueue, syncDistributionQueue, enque
 import { getActiveStore } from "../services/store/store.server";
 
 export async function action({ request }: ActionFunctionArgs) {
-  const shopDomain = "quickstart-demo.myshopify.com";
-
-  // Ensure store exists in database
-  let store = await prisma.store.findUnique({
-    where: { shopifyDomain: shopDomain }
-  });
+  const store = await getActiveStore(request);
+  if (!store) {
+    return json({ error: "Store not found or unauthorized" }, { status: 400 });
+  }
+  const shopDomain = store.shopifyDomain;
 
   if (!store) {
     store = await prisma.store.create({
