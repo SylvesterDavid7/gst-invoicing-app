@@ -3,7 +3,7 @@ import {
   type ActionFunctionArgs,
   type LoaderFunctionArgs
 } from "@remix-run/node";
-import { useNavigation } from "@remix-run/react";
+import { useNavigation, useLoaderData } from "@remix-run/react";
 import {
   Page,
   Layout,

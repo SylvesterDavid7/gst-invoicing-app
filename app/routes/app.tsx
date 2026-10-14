@@ -109,6 +109,35 @@ export default function AppLayout() {
         <main style={{ padding: "20px 24px" }}>
           <Outlet />
         </main>
+
+        <footer
+          style={{
+            borderTop: "1px solid #e1e3e5",
+            padding: "16px 24px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: "12px",
+            color: "#6d7175",
+            flexWrap: "wrap",
+            gap: "8px"
+          }}
+        >
+          <div>
+            &copy; {new Date().getFullYear()} GST Pro Invoicing &bull; Indian Statutory GST Compliance
+          </div>
+          <div style={{ display: "flex", gap: "16px" }}>
+            <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: "#5c5f62", textDecoration: "none" }}>
+              Privacy Policy
+            </a>
+            <a href="/terms" target="_blank" rel="noreferrer" style={{ color: "#5c5f62", textDecoration: "none" }}>
+              Terms of Service
+            </a>
+            <a href="/data-policy" target="_blank" rel="noreferrer" style={{ color: "#5c5f62", textDecoration: "none" }}>
+              Data &amp; GDPR Policy
+            </a>
+          </div>
+        </footer>
       </div>
     </AppProvider>
   );

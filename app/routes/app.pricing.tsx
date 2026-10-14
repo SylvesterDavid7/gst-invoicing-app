@@ -29,19 +29,17 @@ import {
   getRemainingTrialDays
 } from "../services/billing/billing-plans.server";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const shopDomain = "quickstart-demo.myshopify.com";
+import { getActiveStore } from "../services/store/store.server";
 
-  let store = await prisma.store.findUnique({
-    where: { shopifyDomain: shopDomain }
-  });
+export async function loader({ request }: LoaderFunctionArgs) {
+  let store = await getActiveStore(request);
 
   if (!store) {
     store = {
       id: "demo",
-      shopifyDomain: shopDomain,
+      shopifyDomain: "xbrews-gst-demo.myshopify.com",
       plan: "STARTER",
-      monthlyOrderUsage: 12,
+      monthlyOrderUsage: 0,
       createdAt: new Date(),
       trialEndsAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
     } as any;
@@ -73,13 +71,10 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const targetPlan = String(formData.get("planId") || "STARTER") as "STARTER" | "GROWTH" | "PRO";
 
-  const shopDomain = "quickstart-demo.myshopify.com";
-  const store = await prisma.store.findUnique({
-    where: { shopifyDomain: shopDomain }
-  });
+  const store = await getActiveStore(request);
 
   if (!store) {
-    return json({ error: "Store not found" }, { status: 400 });
+    return json({ error: "Store not found or unauthorized" }, { status: 400 });
   }
 
   const url = new URL(request.url);

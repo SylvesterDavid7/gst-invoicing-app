@@ -25,10 +25,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let store = await getActiveStore(request);
 
   if (!store) {
+    const url = new URL(request.url);
+    const domain = url.searchParams.get("shop") || "xbrews-gst-demo.myshopify.com";
     // Default initial profile
     store = {
       id: "demo-store",
-      shopifyDomain: shopDomain,
+      shopifyDomain: domain,
       accessToken: "mock-token",
       legalName: "Acme Enterprises Private Limited",
       tradeName: "Acme Store",

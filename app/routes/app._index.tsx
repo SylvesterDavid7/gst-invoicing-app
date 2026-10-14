@@ -21,32 +21,9 @@ import { getActiveStore } from "../services/store/store.server";
 export async function action({ request }: ActionFunctionArgs) {
   const store = await getActiveStore(request);
   if (!store) {
-    return json({ error: "Store not found or unauthorized" }, { status: 400 });
+    return json({ success: false, error: "Store not found or unauthorized", orderNumber: 0 }, { status: 400 });
   }
   const shopDomain = store.shopifyDomain;
-
-  if (!store) {
-    store = await prisma.store.create({
-      data: {
-        shopifyDomain: shopDomain,
-        accessToken: "mock-token",
-        legalName: "X-Brews Specialty Coffee Private Limited",
-        tradeName: "X-Brews Roasters",
-        gstin: "27AABCA1234A1Z5",
-        stateCode: "27",
-        registeredAddress: {
-          addressLine1: "Plot 42, Bandra-Kurla Complex",
-          city: "Mumbai",
-          state: "Maharashtra",
-          pincode: "400051",
-          country: "India"
-        },
-        invoicePrefix: "XB",
-        creditNotePrefix: "CN",
-        currentFiscalYear: "26-27"
-      }
-    });
-  }
 
   const orderNum = Math.floor(1000 + Math.random() * 9000);
   const testOrder = {
