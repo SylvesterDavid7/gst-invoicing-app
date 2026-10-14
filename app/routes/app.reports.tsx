@@ -18,8 +18,11 @@ import { useState } from "react";
 import { prisma } from "../db.server";
 import { generateGstr1Excel } from "../services/gstr1/gstr1-exporter.server";
 
+import { getActiveStore } from "../services/store/store.server";
+
 export async function loader({ request }: LoaderFunctionArgs) {
-  return json({});
+  const store = await getActiveStore(request);
+  return json({ store });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -28,7 +31,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const year = parseInt(String(formData.get("year") || "2026"), 10);
 
   // Fetch store from database
-  const store = await prisma.store.findFirst();
+  const store = await getActiveStore(request);
 
   if (!store) {
     return json({ error: "Store not configured" }, { status: 400 });
@@ -56,10 +59,13 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function ReportsPage() {
+  const { store } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
 
   const [month, setMonth] = useState("10"); // October
   const [year, setYear] = useState("2026");
+
+  const shopQuery = store ? `&shop=${encodeURIComponent(store.shopifyDomain)}` : "";
 
   const monthOptions = [
     { label: "January", value: "1" },
@@ -119,7 +125,7 @@ export default function ReportsPage() {
 
                 <div style={{ marginTop: "12px" }}>
                   <a
-                    href={`/api/reports/gstr1?month=${month}&year=${year}`}
+                    href={`/api/reports/gstr1?month=${month}&year=${year}${shopQuery}`}
                     download
                     style={{
                       display: "inline-flex",

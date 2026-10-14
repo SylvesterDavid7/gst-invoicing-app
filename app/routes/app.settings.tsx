@@ -19,14 +19,10 @@ import { useState, useCallback } from "react";
 import { GST_STATE_MAP } from "../services/tax-engine/state-codes";
 import { validateGstin } from "../services/tax-engine/gstin-validator";
 import { prisma } from "../db.server";
+import { getActiveStore } from "../services/store/store.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // In a real Shopify app, retrieve the session shop domain
-  const shopDomain = "quickstart-demo.myshopify.com";
-
-  let store = await prisma.store.findUnique({
-    where: { shopifyDomain: shopDomain }
-  });
+  let store = await getActiveStore(request);
 
   if (!store) {
     // Default initial profile
@@ -81,7 +77,8 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: gstinCheck.error || "Invalid GSTIN format" }, { status: 400 });
   }
 
-  const shopDomain = "quickstart-demo.myshopify.com";
+  const currentStore = await getActiveStore(request);
+  const shopDomain = currentStore ? currentStore.shopifyDomain : "xbrews-gst-demo.myshopify.com";
 
   await prisma.store.upsert({
     where: { shopifyDomain: shopDomain },

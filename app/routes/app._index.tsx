@@ -16,6 +16,7 @@ import {
 } from "@shopify/polaris";
 import { prisma } from "../db.server";
 import { invoiceProcessingQueue, pdfRenderingQueue, syncDistributionQueue, enqueueOrderPaid } from "../services/queue/invoice-queue.server";
+import { getActiveStore } from "../services/store/store.server";
 
 export async function action({ request }: ActionFunctionArgs) {
   const shopDomain = "quickstart-demo.myshopify.com";
@@ -102,18 +103,25 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  let store = await prisma.store.findFirst();
+  const store = await getActiveStore(request);
 
-  const recentInvoices = await prisma.invoice.findMany({
-    orderBy: { invoiceDate: "desc" },
-    take: 10
-  });
+  const recentInvoices = store
+    ? await prisma.invoice.findMany({
+        where: { storeId: store.id },
+        orderBy: { invoiceDate: "desc" },
+        take: 10
+      })
+    : [];
 
-  const totalInvoicesCount = await prisma.invoice.count();
+  const totalInvoicesCount = store
+    ? await prisma.invoice.count({ where: { storeId: store.id } })
+    : 0;
 
-  const b2bInvoicesCount = await prisma.invoice.count({
-    where: { buyerGstin: { not: null } }
-  });
+  const b2bInvoicesCount = store
+    ? await prisma.invoice.count({
+        where: { storeId: store.id, buyerGstin: { not: null } }
+      })
+    : 0;
 
   // Queue health metrics
   let queueStats = { processing: 0, rendering: 0, sync: 0 };

@@ -2,12 +2,14 @@ import { type LoaderFunctionArgs } from "@remix-run/node";
 import { prisma } from "../db.server";
 import { generateGstr1Excel } from "../services/gstr1/gstr1-exporter.server";
 
+import { getActiveStore } from "../services/store/store.server";
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const month = parseInt(url.searchParams.get("month") || "10", 10);
   const year = parseInt(url.searchParams.get("year") || "2026", 10);
 
-  const store = await prisma.store.findFirst();
+  const store = await getActiveStore(request);
 
   if (!store) {
     return new Response("Store not found in database", { status: 404 });

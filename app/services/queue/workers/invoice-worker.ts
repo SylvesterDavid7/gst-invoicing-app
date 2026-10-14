@@ -7,6 +7,7 @@ import { validateGstin } from "../../tax-engine/gstin-validator";
 import { getNextInvoiceNumber, getNextCreditNoteNumber } from "../../sequence-engine/sequence-generator";
 import { pdfRenderingQueue } from "../invoice-queue";
 import { incrementStoreOrderUsage } from "../../billing/billing-plans.server";
+import { ensureStoreExists } from "../../store/store.server";
 
 const prisma = new PrismaClient();
 
@@ -18,18 +19,7 @@ export function startInvoiceWorker() {
 
       if (job.name === "process-order-tax") {
         const { shopifyDomain, order } = job.data;
-        let store = await prisma.store.findUnique({
-          where: { shopifyDomain }
-        });
-
-        // Fallback: If domain not registered, use the primary configured store
-        if (!store) {
-          store = await prisma.store.findFirst();
-        }
-
-        if (!store) {
-          throw new Error(`Store not registered for domain: ${shopifyDomain} and no default store found.`);
-        }
+        const store = await ensureStoreExists(shopifyDomain);
 
         // Check if invoice already exists for this order (idempotency check)
         const existingInvoice = await prisma.invoice.findUnique({

@@ -13,15 +13,21 @@ import {
 } from "@shopify/polaris";
 import { useState } from "react";
 import { prisma } from "../db.server";
+import { getActiveStore } from "../services/store/store.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const invoices = await prisma.invoice.findMany({
-    include: { creditNote: true },
-    orderBy: { invoiceDate: "desc" },
-    take: 100
-  });
+  const activeStore = await getActiveStore(request);
 
-  return json({ invoices });
+  const invoices = activeStore
+    ? await prisma.invoice.findMany({
+        where: { storeId: activeStore.id },
+        include: { creditNote: true },
+        orderBy: { invoiceDate: "desc" },
+        take: 100
+      })
+    : [];
+
+  return json({ invoices, activeStore });
 }
 
 export default function InvoicesListPage() {

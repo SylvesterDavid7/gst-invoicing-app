@@ -35,13 +35,10 @@ import { calculateGstOrder } from "../services/tax-engine/gst-calculator";
 import { getNextInvoiceNumber } from "../services/sequence-engine/sequence-generator";
 import { renderInvoicePdfBuffer } from "../services/pdf/pdf-generator";
 import { uploadInvoicePdf } from "../services/storage/s3-storage";
+import { getActiveStore } from "../services/store/store.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const shopDomain = "quickstart-demo.myshopify.com";
-
-  let store = await prisma.store.findUnique({
-    where: { shopifyDomain: shopDomain }
-  });
+  let store = await getActiveStore(request);
 
   if (!store) {
     store = await prisma.store.create({
@@ -79,11 +76,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
-  const shopDomain = "quickstart-demo.myshopify.com";
-
-  const store = await prisma.store.findUnique({
-    where: { shopifyDomain: shopDomain }
-  });
+  const store = await getActiveStore(request);
 
   if (!store) {
     return json({ error: "Store not configured" }, { status: 400 });
