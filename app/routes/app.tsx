@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { json, redirect, type LoaderFunctionArgs } from "@remix-run/node";
 import { Outlet, useLocation, Link, useLoaderData } from "@remix-run/react";
 import { AppProvider } from "@shopify/polaris";
 import enTranslations from "@shopify/polaris/locales/en.json";
@@ -8,9 +8,24 @@ import { getActiveStore } from "../services/store/store.server";
 export async function loader({ request }: LoaderFunctionArgs) {
   const activeStore = await getActiveStore(request);
 
-  return json({
-    activeStore
-  });
+  if (!activeStore) {
+    return redirect("/?auth=required");
+  }
+
+  const url = new URL(request.url);
+  const shopParam = url.searchParams.get("shop");
+  const headers = new Headers();
+  if (shopParam) {
+    headers.append(
+      "Set-Cookie",
+      `active_shop=${encodeURIComponent(shopParam)}; Path=/; Max-Age=31536000; SameSite=Lax`
+    );
+  }
+
+  return json(
+    { activeStore },
+    { headers: headers.has("Set-Cookie") ? headers : undefined }
+  );
 }
 
 export default function AppLayout() {

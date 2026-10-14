@@ -25,16 +25,8 @@ export async function getActiveStore(request: Request) {
     if (store) return store;
   }
 
-  // Seamless fallback: default to the primary store so you are never prompted
-  const defaultStore =
-    (await prisma.store.findFirst({
-      where: { shopifyDomain: { contains: "xbrews" } }
-    })) ||
-    (await prisma.store.findFirst({
-      orderBy: { updatedAt: "desc" }
-    }));
-
-  return defaultStore;
+  // Strictly return null if no store is specified to protect merchant data
+  return null;
 }
 
 /**
