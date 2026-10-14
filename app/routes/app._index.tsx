@@ -99,17 +99,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
       })
     : 0;
 
-  // Queue health metrics
-  let queueStats = { processing: 0, rendering: 0, sync: 0 };
-  try {
-    const [pCount, rCount, sCount] = await Promise.all([
-      invoiceProcessingQueue.getWaitingCount(),
-      pdfRenderingQueue.getWaitingCount(),
-      syncDistributionQueue.getWaitingCount()
-    ]);
-    queueStats = { processing: pCount, rendering: rCount, sync: sCount };
-  } catch {
-    // If Redis is not connected during local dev preview
+  let totalTaxAmount = "0.00";
+  if (store) {
+    const invoices = await prisma.invoice.findMany({
+      where: { storeId: store.id },
+      select: { totalCgst: true, totalSgst: true, totalIgst: true }
+    });
+    const sum = invoices.reduce((acc, inv) => {
+      return acc + Number(inv.totalCgst || 0) + Number(inv.totalSgst || 0) + Number(inv.totalIgst || 0);
+    }, 0);
+    totalTaxAmount = sum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   return json({
@@ -117,12 +116,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
     recentInvoices,
     totalInvoicesCount,
     b2bInvoicesCount,
-    queueStats
+    totalTaxAmount
   });
 }
 
 export default function AppDashboard() {
-  const { store, recentInvoices, totalInvoicesCount, b2bInvoicesCount, queueStats } =
+  const { store, recentInvoices, totalInvoicesCount, b2bInvoicesCount, totalTaxAmount } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const submit = useSubmit();
@@ -161,12 +160,7 @@ export default function AppDashboard() {
       }}
       secondaryActions={[
         {
-          content: isTriggering ? "Queueing Order..." : "⚡ Place Simulated Test Order",
-          onAction: handleTriggerTestOrder,
-          loading: isTriggering
-        },
-        {
-          content: "Settings",
+          content: "Store Settings",
           url: "/app/settings"
         }
       ]}
@@ -243,16 +237,14 @@ export default function AppDashboard() {
             <Card>
               <BlockStack gap="200">
                 <Text as="h3" variant="headingSm" tone="subdued">
-                  BullMQ Queue Pipeline
+                  Total GST Computed
                 </Text>
-                <InlineStack gap="200">
-                  <Badge tone="info">{`Tax: ${queueStats.processing}`}</Badge>
-                  <Badge tone="info">{`PDF: ${queueStats.rendering}`}</Badge>
-                  <Badge tone="info">{`Sync: ${queueStats.sync}`}</Badge>
+                <Text as="p" variant="heading2xl">
+                  ₹{totalTaxAmount}
+                </Text>
+                <InlineStack gap="100" align="start">
+                  <Badge tone="success">🟢 Auto-Invoicing Active</Badge>
                 </InlineStack>
-                <Text as="p" variant="bodySm" tone="subdued">
-                  Decoupled Async Architecture
-                </Text>
               </BlockStack>
             </Card>
           </Grid.Cell>
