@@ -51,6 +51,31 @@ export function startPdfWorker() {
         s.totalTax += parseFloat(String(it.cgstAmount)) + parseFloat(String(it.sgstAmount)) + parseFloat(String(it.igstAmount));
       }
 
+      // Include Shipping (SAC 9968) in HSN summary if applicable
+      const shippingTaxableAmount = parseFloat(String(invoice.shippingTaxable || "0"));
+      if (shippingTaxableAmount > 0) {
+        const shippingHsn = "9968";
+        if (!hsnSummaryMap[shippingHsn]) {
+          hsnSummaryMap[shippingHsn] = {
+            hsnCode: shippingHsn,
+            taxableAmount: 0,
+            cgstAmount: 0,
+            sgstAmount: 0,
+            igstAmount: 0,
+            totalTax: 0
+          };
+        }
+        const s = hsnSummaryMap[shippingHsn];
+        const sCgst = parseFloat(String(invoice.shippingCgst || "0"));
+        const sSgst = parseFloat(String(invoice.shippingSgst || "0"));
+        const sIgst = parseFloat(String(invoice.shippingIgst || "0"));
+        s.taxableAmount += shippingTaxableAmount;
+        s.cgstAmount += sCgst;
+        s.sgstAmount += sSgst;
+        s.igstAmount += sIgst;
+        s.totalTax += sCgst + sSgst + sIgst;
+      }
+
       const hsnSummaryList = Object.values(hsnSummaryMap).map((entry: any) => ({
         hsnCode: entry.hsnCode,
         taxableAmount: entry.taxableAmount.toFixed(2),
@@ -70,6 +95,8 @@ export function startPdfWorker() {
           registeredAddress: store.registeredAddress,
           logoUrl: store.logoUrl,
           signatureUrl: store.signatureUrl,
+          brandColor: store.brandColor,
+          bankDetails: store.bankDetails,
           termsAndConditions: store.termsAndConditions
         },
         invoiceNumber: invoice.invoiceNumber,

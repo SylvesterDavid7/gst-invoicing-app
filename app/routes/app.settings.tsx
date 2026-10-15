@@ -50,6 +50,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
       creditSequence: 0,
       logoUrl: "",
       signatureUrl: "",
+      brandColor: "#008060",
+      bankDetails: {
+        bankName: "",
+        accountNumber: "",
+        ifsc: "",
+        accountName: "",
+        upiId: ""
+      },
       termsAndConditions: "1. Goods once sold will not be returned unless damaged in transit. 2. Subject to Mumbai Jurisdiction.",
       supportEmail: "billing@acme.com",
       supportPhone: "+91 98765 43210",
@@ -71,7 +79,21 @@ export async function action({ request }: ActionFunctionArgs) {
   const creditNotePrefix = String(formData.get("creditNotePrefix") || "CN").trim();
   const logoUrl = String(formData.get("logoUrl") || "").trim();
   const signatureUrl = String(formData.get("signatureUrl") || "").trim();
+  const brandColor = String(formData.get("brandColor") || "#008060").trim();
   const termsAndConditions = String(formData.get("termsAndConditions") || "").trim();
+
+  const bankName = String(formData.get("bankName") || "").trim();
+  const accountNumber = String(formData.get("accountNumber") || "").trim();
+  const ifsc = String(formData.get("ifsc") || "").trim().toUpperCase();
+  const accountName = String(formData.get("accountName") || "").trim();
+  const upiId = String(formData.get("upiId") || "").trim();
+  const bankDetails = {
+    bankName,
+    accountNumber,
+    ifsc,
+    accountName,
+    upiId
+  };
 
   // Validate GSTIN format
   const gstinCheck = validateGstin(gstin);
@@ -93,6 +115,8 @@ export async function action({ request }: ActionFunctionArgs) {
       creditNotePrefix,
       logoUrl,
       signatureUrl,
+      brandColor,
+      bankDetails,
       termsAndConditions
     },
     create: {
@@ -114,6 +138,8 @@ export async function action({ request }: ActionFunctionArgs) {
       currentFiscalYear: "26-27",
       logoUrl,
       signatureUrl,
+      brandColor,
+      bankDetails,
       termsAndConditions
     }
   });
@@ -127,6 +153,7 @@ export default function SettingsPage() {
   const submit = useSubmit();
   const navigation = useNavigation();
 
+  const initialBank = (store?.bankDetails as any) || {};
   const [legalName, setLegalName] = useState(store?.legalName || "");
   const [tradeName, setTradeName] = useState(store?.tradeName || "");
   const [gstin, setGstin] = useState(store?.gstin || "");
@@ -135,7 +162,14 @@ export default function SettingsPage() {
   const [creditNotePrefix, setCreditNotePrefix] = useState(store?.creditNotePrefix || "CN");
   const [logoUrl, setLogoUrl] = useState(store?.logoUrl || "");
   const [signatureUrl, setSignatureUrl] = useState(store?.signatureUrl || "");
+  const [brandColor, setBrandColor] = useState(store?.brandColor || "#008060");
   const [terms, setTerms] = useState(store?.termsAndConditions || "");
+
+  const [bankName, setBankName] = useState(initialBank.bankName || "");
+  const [accountNumber, setAccountNumber] = useState(initialBank.accountNumber || "");
+  const [ifsc, setIfsc] = useState(initialBank.ifsc || "");
+  const [accountName, setAccountName] = useState(initialBank.accountName || "");
+  const [upiId, setUpiId] = useState(initialBank.upiId || "");
 
   const stateOptions = Object.entries(GST_STATE_MAP).map(([code, item]) => ({
     label: `${code} - ${item.name}`,
@@ -152,7 +186,13 @@ export default function SettingsPage() {
     fd.append("creditNotePrefix", creditNotePrefix);
     fd.append("logoUrl", logoUrl);
     fd.append("signatureUrl", signatureUrl);
+    fd.append("brandColor", brandColor.startsWith("#") ? brandColor : `#${brandColor}`);
     fd.append("termsAndConditions", terms);
+    fd.append("bankName", bankName);
+    fd.append("accountNumber", accountNumber);
+    fd.append("ifsc", ifsc);
+    fd.append("accountName", accountName);
+    fd.append("upiId", upiId);
     submit(fd, { method: "POST" });
   };
 
@@ -247,11 +287,72 @@ export default function SettingsPage() {
           </Layout.AnnotatedSection>
 
           <Layout.AnnotatedSection
-            title="Branding & Signature Stamp"
-            description="Customize your invoice visual presentation and authorized signatory stamp."
+            title="Branding & Visual Accent"
+            description="Customize your invoice visual presentation, primary brand accent color, and authorized signatory stamp."
           >
             <Card>
               <FormLayout>
+                <BlockStack gap="200">
+                  <Text as="p" variant="bodyMd" fontWeight="semibold">
+                    Primary Brand Accent Color
+                  </Text>
+                  <Text as="p" variant="bodySm" tone="subdued">
+                    Applied to table headers, borders, and total accents on your generated PDF invoices.
+                  </Text>
+                  <InlineStack gap="300" align="start">
+                    <div
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "6px",
+                        backgroundColor: brandColor,
+                        border: "2px solid #d2d5d8",
+                        flexShrink: 0
+                      }}
+                    />
+                    <div style={{ flex: 1, maxWidth: "220px" }}>
+                      <TextField
+                        label="Brand Color Hex"
+                        labelHidden
+                        value={brandColor}
+                        onChange={setBrandColor}
+                        autoComplete="off"
+                      />
+                    </div>
+                  </InlineStack>
+                  <InlineStack gap="200" wrap>
+                    {[
+                      { name: "Shopify Emerald", hex: "#008060" },
+                      { name: "Navy Blue", hex: "#1e3a8a" },
+                      { name: "Indigo", hex: "#4f46e5" },
+                      { name: "Purple", hex: "#7c3aed" },
+                      { name: "Crimson", hex: "#991b1b" },
+                      { name: "Charcoal Slate", hex: "#1f2937" }
+                    ].map((c) => (
+                      <Button
+                        key={c.hex}
+                        size="slim"
+                        pressed={brandColor.toLowerCase() === c.hex.toLowerCase()}
+                        onClick={() => setBrandColor(c.hex)}
+                      >
+                        <InlineStack gap="100" blockAlign="center">
+                          <span
+                            style={{
+                              display: "inline-block",
+                              width: "12px",
+                              height: "12px",
+                              borderRadius: "50%",
+                              backgroundColor: c.hex,
+                              marginRight: "4px"
+                            }}
+                          />
+                          {c.name}
+                        </InlineStack>
+                      </Button>
+                    ))}
+                  </InlineStack>
+                </BlockStack>
+
                 <TextField
                   label="Logo Image URL"
                   value={logoUrl}
@@ -273,6 +374,56 @@ export default function SettingsPage() {
                   multiline={3}
                   autoComplete="off"
                 />
+              </FormLayout>
+            </Card>
+          </Layout.AnnotatedSection>
+
+          <Layout.AnnotatedSection
+            title="Bank Account & UPI Details"
+            description="Display statutory bank transfer and UPI details on invoices for B2B direct wire, NEFT/RTGS, and UPI payments."
+          >
+            <Card>
+              <FormLayout>
+                <TextField
+                  label="Account Beneficiary Name"
+                  value={accountName}
+                  onChange={setAccountName}
+                  placeholder="e.g. Acme Enterprises Private Limited"
+                  autoComplete="off"
+                />
+                <FormLayout.Group>
+                  <TextField
+                    label="Bank Name"
+                    value={bankName}
+                    onChange={setBankName}
+                    placeholder="e.g. HDFC Bank / ICICI Bank"
+                    autoComplete="off"
+                  />
+                  <TextField
+                    label="Bank Account Number"
+                    value={accountNumber}
+                    onChange={setAccountNumber}
+                    placeholder="e.g. 50200012345678"
+                    autoComplete="off"
+                  />
+                </FormLayout.Group>
+                <FormLayout.Group>
+                  <TextField
+                    label="IFSC Code (11 alphanumeric digits)"
+                    value={ifsc}
+                    onChange={(val) => setIfsc(val.toUpperCase())}
+                    placeholder="e.g. HDFC0001234"
+                    autoComplete="off"
+                  />
+                  <TextField
+                    label="UPI ID / VPA (Optional)"
+                    value={upiId}
+                    onChange={setUpiId}
+                    placeholder="e.g. merchant@upi or yourname@okhdfcbank"
+                    autoComplete="off"
+                    helpText="Enables 1-click UPI payments for customers"
+                  />
+                </FormLayout.Group>
               </FormLayout>
             </Card>
           </Layout.AnnotatedSection>

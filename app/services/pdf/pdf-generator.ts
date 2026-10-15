@@ -15,8 +15,19 @@ Handlebars.registerHelper("halfRate", function (rate: any) {
   return isNaN(num) ? "0.00" : (num / 2).toFixed(2);
 });
 
-Handlebars.registerHelper("@index", function (options: any) {
-  return (options.data?.index ?? 0) + 1;
+Handlebars.registerHelper("inc", function (value: any) {
+  const num = parseInt(value, 10);
+  return isNaN(num) ? 1 : num + 1;
+});
+
+Handlebars.registerHelper("formatCurrency", function (value: any) {
+  const num = parseFloat(value);
+  return isNaN(num) ? "0.00" : num.toFixed(2);
+});
+
+Handlebars.registerHelper("ifAny", function (...args: any[]) {
+  const options = args.pop();
+  return args.some(Boolean) ? options.fn(this) : options.inverse(this);
 });
 
 function findTemplatePath(): string {
@@ -56,6 +67,8 @@ export interface RenderInvoicePdfInput {
     registeredAddress: any;
     logoUrl?: string | null;
     signatureUrl?: string | null;
+    brandColor?: string | null;
+    bankDetails?: any;
     termsAndConditions?: string | null;
   };
   invoiceNumber: string;
@@ -113,8 +126,21 @@ export async function renderInvoicePdfBuffer(data: RenderInvoicePdfInput): Promi
   const posStateName = getStateNameByCode(data.posStateCode);
   const amountInWords = convertNumberToIndianWords(data.grandTotal);
 
+  let parsedBankDetails = data.store.bankDetails;
+  if (typeof parsedBankDetails === "string") {
+    try {
+      parsedBankDetails = JSON.parse(parsedBankDetails);
+    } catch {
+      parsedBankDetails = null;
+    }
+  }
+
   const htmlContent = template({
     ...data,
+    store: {
+      ...data.store,
+      bankDetails: parsedBankDetails
+    },
     posStateName,
     amountInWords
   });

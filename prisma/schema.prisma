@@ -28,6 +28,8 @@ model Store {
   // Customization & Branding
   logoUrl           String?
   signatureUrl      String?
+  brandColor        String?   @default("#008060")
+  bankDetails       Json?     // { bankName, accountNumber, ifsc, accountName, upiId }
   termsAndConditions String?  @db.Text
   supportEmail      String?
   supportPhone      String?

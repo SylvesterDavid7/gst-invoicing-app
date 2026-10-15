@@ -27,7 +27,7 @@
     .header {
       display: flex;
       justify-content: space-between;
-      border-bottom: 2px solid #202223;
+      border-bottom: 2px solid {{#if store.brandColor}}{{store.brandColor}}{{else}}#202223{{/if}};
       padding-bottom: 12px;
       margin-bottom: 14px;
     }
@@ -85,8 +85,8 @@
       font-size: 10px;
     }
     th {
-      background-color: #f7f7f8;
-      color: #202223;
+      background-color: {{#if store.brandColor}}{{store.brandColor}}{{else}}#f7f7f8{{/if}};
+      color: {{#if store.brandColor}}#ffffff{{else}}#202223{{/if}};
       font-weight: 700;
       text-align: left;
       padding: 6px 8px;
@@ -123,8 +123,8 @@
       padding: 4px 6px;
     }
     .totals-table tr.grand-total td {
-      border-top: 2px solid #202223;
-      border-bottom: 2px solid #202223;
+      border-top: 2px solid {{#if store.brandColor}}{{store.brandColor}}{{else}}#202223{{/if}};
+      border-bottom: 2px solid {{#if store.brandColor}}{{store.brandColor}}{{else}}#202223{{/if}};
       font-weight: 700;
       font-size: 12px;
       color: #000;
@@ -225,7 +225,7 @@
         <tbody>
           {{#each items}}
           <tr>
-            <td class="text-center">{{@index}}</td>
+            <td class="text-center">{{inc @index}}</td>
             <td>
               <strong>{{this.title}}</strong>
               {{#if this.sku}}<br><span style="color: #6d7175; font-size: 9px;">SKU: {{this.sku}}</span>{{/if}}
@@ -236,35 +236,35 @@
             <td class="text-right">₹{{this.taxableAmount}}</td>
             {{#if ../isInterState}}
               <td class="text-right">
-                ₹{{this.igstAmount}}<br><span style="color: #6d7175; font-size: 8px;">({{this.taxRate}}%)</span>
+                ₹{{formatCurrency this.igstAmount}}<br><span style="color: #6d7175; font-size: 8px;">({{this.taxRate}}%)</span>
               </td>
             {{else}}
               <td class="text-right">
-                ₹{{this.cgstAmount}}<br><span style="color: #6d7175; font-size: 8px;">({{halfRate this.taxRate}}%)</span>
+                ₹{{formatCurrency this.cgstAmount}}<br><span style="color: #6d7175; font-size: 8px;">({{halfRate this.taxRate}}%)</span>
               </td>
               <td class="text-right">
-                ₹{{this.sgstAmount}}<br><span style="color: #6d7175; font-size: 8px;">({{halfRate this.taxRate}}%)</span>
+                ₹{{formatCurrency this.sgstAmount}}<br><span style="color: #6d7175; font-size: 8px;">({{halfRate this.taxRate}}%)</span>
               </td>
             {{/if}}
-            <td class="text-right"><strong>₹{{this.totalAmount}}</strong></td>
+            <td class="text-right"><strong>₹{{formatCurrency this.totalAmount}}</strong></td>
           </tr>
           {{/each}}
 
           {{#if shipping.shippingGross}}
           <tr>
             <td class="text-center">-</td>
-            <td><strong>Shipping & Handling Charges</strong></td>
+            <td><strong>Shipping &amp; Handling Charges</strong></td>
             <td>9968</td>
             <td class="text-center">1</td>
-            <td class="text-right">₹{{shipping.shippingGross}}</td>
+            <td class="text-right">₹{{shipping.shippingTaxable}}</td>
             <td class="text-right">₹{{shipping.shippingTaxable}}</td>
             {{#if isInterState}}
-              <td class="text-right">₹{{shipping.shippingIgst}}<br><span style="font-size: 8px;">({{shipping.shippingTaxRate}}%)</span></td>
+              <td class="text-right">₹{{formatCurrency shipping.shippingIgst}}<br><span style="font-size: 8px;">({{shipping.shippingTaxRate}}%)</span></td>
             {{else}}
-              <td class="text-right">₹{{shipping.shippingCgst}}<br><span style="font-size: 8px;">({{halfRate shipping.shippingTaxRate}}%)</span></td>
-              <td class="text-right">₹{{shipping.shippingSgst}}<br><span style="font-size: 8px;">({{halfRate shipping.shippingTaxRate}}%)</span></td>
+              <td class="text-right">₹{{formatCurrency shipping.shippingCgst}}<br><span style="font-size: 8px;">({{halfRate shipping.shippingTaxRate}}%)</span></td>
+              <td class="text-right">₹{{formatCurrency shipping.shippingSgst}}<br><span style="font-size: 8px;">({{halfRate shipping.shippingTaxRate}}%)</span></td>
             {{/if}}
-            <td class="text-right"><strong>₹{{shipping.shippingGross}}</strong></td>
+            <td class="text-right"><strong>₹{{formatCurrency shipping.shippingGross}}</strong></td>
           </tr>
           {{/if}}
         </tbody>
@@ -344,6 +344,33 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Bank Details & UPI Payment Details (Optional) -->
+    {{#if store.bankDetails}}
+    {{#ifAny store.bankDetails.accountNumber store.bankDetails.upiId}}
+    <div style="margin-bottom: 14px; border: 1px solid #d2d5d8; border-radius: 4px; padding: 8px 12px; background-color: #fafbfb;">
+      <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: {{#if store.brandColor}}{{store.brandColor}}{{else}}#202223{{/if}}; margin-bottom: 5px; letter-spacing: 0.5px;">
+        Bank Transfer &amp; UPI Payment Details
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 9px; line-height: 1.5;">
+        <div style="flex: 1.2;">
+          {{#if store.bankDetails.accountName}}<div><span style="color: #6d7175;">Beneficiary:</span> <strong>{{store.bankDetails.accountName}}</strong></div>{{/if}}
+          {{#if store.bankDetails.bankName}}<div><span style="color: #6d7175;">Bank Name:</span> {{store.bankDetails.bankName}}</div>{{/if}}
+        </div>
+        <div style="flex: 1.2;">
+          {{#if store.bankDetails.accountNumber}}<div><span style="color: #6d7175;">Account No:</span> <strong>{{store.bankDetails.accountNumber}}</strong></div>{{/if}}
+          {{#if store.bankDetails.ifsc}}<div><span style="color: #6d7175;">IFSC Code:</span> <strong>{{store.bankDetails.ifsc}}</strong></div>{{/if}}
+        </div>
+        {{#if store.bankDetails.upiId}}
+        <div style="flex: 1; text-align: right;">
+          <div style="color: #6d7175;">UPI ID / VPA:</div>
+          <div style="font-size: 10px; font-weight: 700; color: #202223;">{{store.bankDetails.upiId}}</div>
+        </div>
+        {{/if}}
+      </div>
+    </div>
+    {{/ifAny}}
+    {{/if}}
 
     <!-- Footer Signatory & Terms -->
     <div class="footer">

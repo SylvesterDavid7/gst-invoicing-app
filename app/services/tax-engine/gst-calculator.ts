@@ -207,6 +207,24 @@ export function calculateGstOrder(params: CalculateGstParams): InvoiceCalculatio
     }
 
     totalTaxable = totalTaxable.plus(shippingTaxable);
+
+    // Populate statutory SAC 9968 summary for shipping/courier charges
+    const shippingHsn = "9968";
+    if (!hsnMap[shippingHsn]) {
+      hsnMap[shippingHsn] = {
+        hsnCode: shippingHsn,
+        taxableAmount: new Decimal(0),
+        cgstAmount: new Decimal(0),
+        sgstAmount: new Decimal(0),
+        igstAmount: new Decimal(0),
+        totalTax: new Decimal(0)
+      };
+    }
+    hsnMap[shippingHsn].taxableAmount = hsnMap[shippingHsn].taxableAmount.plus(shippingTaxable);
+    hsnMap[shippingHsn].cgstAmount = hsnMap[shippingHsn].cgstAmount.plus(shippingCgst);
+    hsnMap[shippingHsn].sgstAmount = hsnMap[shippingHsn].sgstAmount.plus(shippingSgst);
+    hsnMap[shippingHsn].igstAmount = hsnMap[shippingHsn].igstAmount.plus(shippingIgst);
+    hsnMap[shippingHsn].totalTax = hsnMap[shippingHsn].totalTax.plus(shippingTax);
   }
 
   const shippingBreakdown: ShippingTaxBreakdown = {

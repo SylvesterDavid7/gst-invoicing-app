@@ -192,6 +192,8 @@ export async function action({ request }: ActionFunctionArgs) {
         registeredAddress: store.registeredAddress,
         logoUrl: store.logoUrl,
         signatureUrl: store.signatureUrl,
+        brandColor: store.brandColor,
+        bankDetails: store.bankDetails,
         termsAndConditions: store.termsAndConditions
       },
       invoiceNumber: createdInvoice.invoiceNumber,
