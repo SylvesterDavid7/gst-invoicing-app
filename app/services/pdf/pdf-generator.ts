@@ -25,7 +25,7 @@ Handlebars.registerHelper("formatCurrency", function (value: any) {
   return isNaN(num) ? "0.00" : num.toFixed(2);
 });
 
-Handlebars.registerHelper("ifAny", function (...args: any[]) {
+Handlebars.registerHelper("ifAny", function (this: any, ...args: any[]) {
   const options = args.pop();
   return args.some(Boolean) ? options.fn(this) : options.inverse(this);
 });
@@ -135,10 +135,14 @@ export async function renderInvoicePdfBuffer(data: RenderInvoicePdfInput): Promi
     }
   }
 
+  const brandColor = data.store.brandColor && data.store.brandColor.trim() ? data.store.brandColor.trim() : "#008060";
+
   const htmlContent = template({
     ...data,
+    brandColor,
     store: {
       ...data.store,
+      brandColor,
       bankDetails: parsedBankDetails
     },
     posStateName,
