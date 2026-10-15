@@ -45,19 +45,6 @@ export function validateGstin(rawGstin: string | undefined | null): GstinValidat
 
   const pan = gstin.substring(2, 12);
 
-  // Checksum calculation (GSTN Luhn-mod-36 algorithm)
-  const isChecksumValid = verifyGstChecksum(gstin);
-  if (!isChecksumValid) {
-    return {
-      isValid: false,
-      gstin,
-      stateCode,
-      stateName: stateEntry.name,
-      pan,
-      error: "GSTIN failed checksum verification"
-    };
-  }
-
   return {
     isValid: true,
     gstin,
