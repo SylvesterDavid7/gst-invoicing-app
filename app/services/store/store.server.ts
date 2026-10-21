@@ -11,9 +11,28 @@ export async function getActiveDemoSession(request: Request) {
   const match = cookieHeader.match(/demo_token=([^;]+)/);
   const demoCookie = match ? decodeURIComponent(match[1]) : null;
   const token = demoParam || demoCookie;
-  if (!token) return null;
 
-  return getAndValidateDemoAccess(token);
+  if (token) {
+    return getAndValidateDemoAccess(token);
+  }
+
+  // Incognito resilience: If cookies were blocked/cleared, identify demo session via the sandboxed demo store domain
+  const shopParam = url.searchParams.get("shop");
+  const shopMatch = cookieHeader.match(/active_shop=([^;]+)/);
+  const shopCookie = shopMatch ? decodeURIComponent(shopMatch[1]) : null;
+  const currentShop = shopParam || shopCookie;
+
+  if (currentShop && currentShop.startsWith("demo-")) {
+    const demo = await prisma.demoAccess.findFirst({
+      where: { storeDomain: currentShop },
+      orderBy: { createdAt: "desc" }
+    });
+    if (demo) {
+      return getAndValidateDemoAccess(demo.token);
+    }
+  }
+
+  return null;
 }
 
 /**

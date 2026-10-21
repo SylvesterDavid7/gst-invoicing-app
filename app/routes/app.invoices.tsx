@@ -92,31 +92,33 @@ export default function InvoicesListPage() {
               onClearButtonClick={() => setSearch("")}
             />
 
-            <DataTable
-              columnContentTypes={[
-                "text",
-                "text",
-                "text",
-                "text",
-                "text",
-                "text",
-                "numeric",
-                "text",
-                "text"
-              ]}
-              headings={[
-                "Invoice No",
-                "Order",
-                "Date",
-                "Type / GSTIN",
-                "Place of Supply",
-                "Tax Mode",
-                "Total Amount",
-                "Status / CN",
-                "Actions"
-              ]}
-              rows={rows}
-            />
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", width: "100%" }}>
+              <DataTable
+                columnContentTypes={[
+                  "text",
+                  "text",
+                  "text",
+                  "text",
+                  "text",
+                  "text",
+                  "numeric",
+                  "text",
+                  "text"
+                ]}
+                headings={[
+                  "Invoice No",
+                  "Order",
+                  "Date",
+                  "Type / GSTIN",
+                  "Place of Supply",
+                  "Tax Mode",
+                  "Total Amount",
+                  "Status / CN",
+                  "Actions"
+                ]}
+                rows={rows}
+              />
+            </div>
           </BlockStack>
         </Card>
       </BlockStack>

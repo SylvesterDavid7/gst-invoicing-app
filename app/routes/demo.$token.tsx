@@ -72,19 +72,19 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const headers = new Headers();
   headers.append(
     "Set-Cookie",
-    `active_shop=${encodeURIComponent(targetDomain)}; Path=/; Max-Age=${maxAge}; SameSite=None; Secure`
+    `active_shop=${encodeURIComponent(targetDomain)}; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure`
   );
   headers.append(
     "Set-Cookie",
-    `demo_token=${encodeURIComponent(demo.token)}; Path=/; Max-Age=${maxAge}; SameSite=None; Secure`
+    `demo_token=${encodeURIComponent(demo.token)}; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure`
   );
   headers.append(
     "Set-Cookie",
-    `demo_client=${encodeURIComponent(demo.clientName)}; Path=/; Max-Age=${maxAge}; SameSite=None; Secure`
+    `demo_client=${encodeURIComponent(demo.clientName)}; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure`
   );
   headers.append(
     "Set-Cookie",
-    `demo_expires=${encodeURIComponent(demo.expiresAt.toISOString())}; Path=/; Max-Age=${maxAge}; SameSite=None; Secure`
+    `demo_expires=${encodeURIComponent(demo.expiresAt.toISOString())}; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure`
   );
 
   return redirect(`/app?shop=${encodeURIComponent(targetDomain)}&demo_token=${encodeURIComponent(demo.token)}`, {
@@ -187,8 +187,8 @@ export default function DemoTokenPage() {
           >
             💬 Contact Admin to Activate Full App
           </a>
-          <Link to="/#pricing" style={styles.secondaryBtn}>
-            View Subscription Plans
+          <Link to="/" style={styles.secondaryBtn}>
+            Return to Home
           </Link>
         </div>
       </div>
@@ -203,15 +203,17 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)",
-    padding: "24px",
+    padding: "16px",
+    boxSizing: "border-box",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
   },
   card: {
     background: "#ffffff",
     borderRadius: "16px",
-    padding: "40px 36px",
-    maxWidth: "520px",
+    padding: "32px 20px",
+    maxWidth: "500px",
     width: "100%",
+    boxSizing: "border-box",
     boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
     textAlign: "center"
   },

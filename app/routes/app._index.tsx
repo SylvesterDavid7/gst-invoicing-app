@@ -268,29 +268,31 @@ export default function AppDashboard() {
                     No invoices generated yet. Webhook listening on <code>orders/paid</code>.
                   </Text>
                 ) : (
-                  <DataTable
-                    columnContentTypes={[
-                      "text",
-                      "text",
-                      "text",
-                      "text",
-                      "numeric",
-                      "text",
-                      "text",
-                      "text"
-                    ]}
-                    headings={[
-                      "Invoice No",
-                      "Order",
-                      "Customer / Company",
-                      "GSTIN Type",
-                      "Grand Total",
-                      "Tax Type",
-                      "Date",
-                      "Actions"
-                    ]}
-                    rows={rows}
-                  />
+                  <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", width: "100%" }}>
+                    <DataTable
+                      columnContentTypes={[
+                        "text",
+                        "text",
+                        "text",
+                        "text",
+                        "numeric",
+                        "text",
+                        "text",
+                        "text"
+                      ]}
+                      headings={[
+                        "Invoice No",
+                        "Order",
+                        "Customer / Company",
+                        "GSTIN Type",
+                        "Grand Total",
+                        "Tax Type",
+                        "Date",
+                        "Actions"
+                      ]}
+                      rows={rows}
+                    />
+                  </div>
                 )}
               </BlockStack>
             </Card>

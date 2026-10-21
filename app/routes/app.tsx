@@ -24,11 +24,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const shopParam = url.searchParams.get("shop");
+  const demoTokenParam = url.searchParams.get("demo_token") || demoSession?.token;
+
   const headers = new Headers();
   if (shopParam) {
     headers.append(
       "Set-Cookie",
-      `active_shop=${encodeURIComponent(shopParam)}; Path=/; Max-Age=31536000; SameSite=None; Secure`
+      `active_shop=${encodeURIComponent(shopParam)}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`
+    );
+  }
+  if (demoTokenParam) {
+    headers.append(
+      "Set-Cookie",
+      `demo_token=${encodeURIComponent(demoTokenParam)}; Path=/; Max-Age=259200; SameSite=Lax; Secure`
     );
   }
 
@@ -51,9 +59,19 @@ export default function AppLayout() {
   const { activeStore, demoInfo } = useLoaderData<typeof loader>();
   const location = useLocation();
 
-  const shopQuery = activeStore ? `?shop=${encodeURIComponent(activeStore.shopifyDomain)}` : "";
+  // Bulletproof demo detection: check demoSession OR if store domain belongs to an isolated demo sandbox
+  const isDemoMode = Boolean(
+    demoInfo ||
+    activeStore?.shopifyDomain?.startsWith("demo-") ||
+    activeStore?.accessToken === "demo-sandbox-token"
+  );
 
-  // In demo mode, only expose product features (Dashboard, POS, Invoices, Settings, Reports), NOT Plans & Pricing
+  const demoToken = demoInfo?.token;
+  const shopQuery = activeStore
+    ? `?shop=${encodeURIComponent(activeStore.shopifyDomain)}${demoToken ? `&demo_token=${encodeURIComponent(demoToken)}` : ""}`
+    : (demoToken ? `?demo_token=${encodeURIComponent(demoToken)}` : "");
+
+  // In demo mode, only expose product features (Dashboard, POS, Invoices, Settings, Reports), NEVER Plans & Pricing
   const navItems = [
     { label: "Dashboard", path: "/app" },
     { label: "Manual Billing (POS)", path: "/app/billing" },
@@ -62,15 +80,67 @@ export default function AppLayout() {
     { label: "GSTR-1 Exports", path: "/app/reports" }
   ];
 
-  if (!demoInfo) {
+  if (!isDemoMode) {
     navItems.push({ label: "Plans & Pricing", path: "/app/pricing" });
   }
 
   return (
     <AppProvider i18n={enTranslations}>
+      <style>{`
+        /* Mobile-First Navigation & Layout Responsive Rules */
+        .app-mobile-nav {
+          display: flex;
+          gap: 6px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          padding: 4px 0;
+        }
+        .app-mobile-nav::-webkit-scrollbar {
+          display: none;
+        }
+        .app-nav-link {
+          flex-shrink: 0;
+          white-space: nowrap;
+          text-decoration: none;
+          padding: 7px 14px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          transition: all 0.15s ease;
+        }
+        @media (max-width: 768px) {
+          .app-header-box {
+            padding: 10px 14px !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+          }
+          .app-header-top-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+          }
+          .app-main-box {
+            padding: 12px 10px !important;
+          }
+          .app-demo-banner {
+            padding: 10px 14px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 6px !important;
+          }
+          .app-store-badge {
+            font-size: 11px !important;
+            padding: 2px 8px !important;
+          }
+        }
+      `}</style>
+
       <div style={{ background: "#f6f6f7", minHeight: "100vh" }}>
         {demoInfo && (
           <div
+            className="app-demo-banner"
             style={{
               background: "linear-gradient(90deg, #1e1b4b 0%, #312e81 100%)",
               color: "#ffffff",
@@ -87,16 +157,15 @@ export default function AppLayout() {
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ fontSize: "14px" }}>⚡</span>
               <span>
-                <strong>Feature Testing Sandbox:</strong> Dedicated demo environment for{" "}
-                <strong>{demoInfo.clientName}</strong> &bull; 3-Day access valid until{" "}
+                <strong>Demo Sandbox:</strong> Workspace for{" "}
+                <strong>{demoInfo.clientName}</strong> &bull; Valid until{" "}
                 <span style={{ color: "#fef08a", fontWeight: 700 }}>
                   {new Date(demoInfo.expiresAt).toLocaleDateString("en-IN", {
                     month: "short",
                     day: "numeric",
                     year: "numeric"
                   })}
-                </span>{" "}
-                at {new Date(demoInfo.expiresAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                </span>
               </span>
             </div>
             <span
@@ -110,11 +179,13 @@ export default function AppLayout() {
                 border: "1px solid rgba(255,255,255,0.2)"
               }}
             >
-              Demo Sandbox
+              3-Day Access
             </span>
           </div>
         )}
+
         <header
+          className="app-header-box"
           style={{
             background: "#ffffff",
             borderBottom: "1px solid #e1e3e5",
@@ -126,22 +197,43 @@ export default function AppLayout() {
             gap: "12px"
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div className="app-header-top-row" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <span style={{ fontSize: "20px" }}>⚡</span>
             <div>
-              <span style={{ fontWeight: 700, fontSize: "15px", color: "#202223" }}>
-                GST Pro &bull; Invoicing & Tax Compliance
-              </span>
+              <div style={{ fontWeight: 700, fontSize: "15px", color: "#202223" }}>
+                GST Pro &bull; Invoicing &amp; Tax Compliance
+              </div>
               {activeStore && (
                 <div style={{ fontSize: "11px", color: "#6d7175" }}>
                   Active: <strong>{activeStore.tradeName || activeStore.legalName}</strong> &bull; GSTIN: <code>{activeStore.gstin}</code>
                 </div>
               )}
             </div>
+
+            {/* Merchant's Connected Store Identity (Tenant Isolated) */}
+            {activeStore && (
+              <div
+                className="app-store-badge"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  background: "#f1f8f5",
+                  border: "1px solid #b7ece0",
+                  padding: "4px 10px",
+                  borderRadius: "8px",
+                  marginLeft: "auto"
+                }}
+              >
+                <span style={{ fontSize: "12px", color: "#008060", fontWeight: 700 }}>
+                  🏬 {activeStore.tradeName || activeStore.shopifyDomain.split(".")[0]}
+                </span>
+              </div>
+            )}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <nav style={{ display: "flex", gap: "6px" }}>
+          <div style={{ display: "flex", alignItems: "center", width: "100%", maxWidth: "100%", overflow: "hidden" }}>
+            <nav className="app-mobile-nav" style={{ width: "100%" }}>
               {navItems.map((item) => {
                 const isActive =
                   item.path === "/app"
@@ -152,14 +244,11 @@ export default function AppLayout() {
                   <Link
                     key={item.path}
                     to={`${item.path}${shopQuery}`}
+                    className="app-nav-link"
                     style={{
-                      textDecoration: "none",
-                      padding: "6px 12px",
-                      borderRadius: "6px",
-                      fontSize: "13px",
-                      fontWeight: 600,
                       color: isActive ? "#008060" : "#5c5f62",
-                      background: isActive ? "#f1f8f5" : "transparent"
+                      background: isActive ? "#e6f4ea" : "#f1f2f3",
+                      border: isActive ? "1px solid #b7ece0" : "1px solid transparent"
                     }}
                   >
                     {item.label}
@@ -167,29 +256,10 @@ export default function AppLayout() {
                 );
               })}
             </nav>
-
-            {/* Merchant's Connected Store Identity (Tenant Isolated) */}
-            {activeStore && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  background: "#f1f8f5",
-                  border: "1px solid #b7ece0",
-                  padding: "4px 10px",
-                  borderRadius: "8px"
-                }}
-              >
-                <span style={{ fontSize: "12px", color: "#008060", fontWeight: 700 }}>
-                  🏬 {activeStore.tradeName || activeStore.shopifyDomain}
-                </span>
-              </div>
-            )}
           </div>
         </header>
 
-        <main style={{ padding: "20px 24px" }}>
+        <main className="app-main-box" style={{ padding: "20px 24px" }}>
           <Outlet />
         </main>
 

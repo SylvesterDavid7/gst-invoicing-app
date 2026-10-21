@@ -32,16 +32,23 @@ import {
 import { getActiveStore, getActiveDemoSession } from "../services/store/store.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // Demo users should only access product features, not SaaS billing plans
+  // Demo users should strictly access product features, never SaaS billing plans
   const demoSession = await getActiveDemoSession(request);
-  if (demoSession) {
-    return redirect(`/app?shop=${encodeURIComponent(demoSession.storeDomain)}`);
+  const store = await getActiveStore(request);
+
+  if (
+    demoSession ||
+    store?.shopifyDomain?.startsWith("demo-") ||
+    store?.accessToken === "demo-sandbox-token"
+  ) {
+    const targetShop = store?.shopifyDomain || demoSession?.storeDomain || "";
+    const tokenParam = demoSession?.token ? `&demo_token=${encodeURIComponent(demoSession.token)}` : "";
+    return redirect(`/app?shop=${encodeURIComponent(targetShop)}${tokenParam}`);
   }
 
-  let store = await getActiveStore(request);
-
-  if (!store) {
-    store = {
+  let activeStore = store;
+  if (!activeStore) {
+    activeStore = {
       id: "demo",
       shopifyDomain: "xbrews-gst-demo.myshopify.com",
       plan: "STARTER",
@@ -51,11 +58,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
     } as any;
   }
 
-  const currentPlanId = store?.plan || "STARTER";
+  const currentPlanId = activeStore?.plan || "STARTER";
   const currentPlan = BILLING_PLANS[currentPlanId] || BILLING_PLANS.STARTER;
-  const currentUsage = store?.monthlyOrderUsage || 0;
-  const isTrial = isStoreTrialActive(store as any);
-  const remainingDays = getRemainingTrialDays(store as any);
+  const currentUsage = activeStore?.monthlyOrderUsage || 0;
+  const isTrial = isStoreTrialActive(activeStore as any);
+  const remainingDays = getRemainingTrialDays(activeStore as any);
 
   const usagePercent =
     currentPlan.orderLimit === "UNLIMITED"
@@ -63,7 +70,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       : Math.min(Math.round((currentUsage / (currentPlan.orderLimit as number)) * 100), 100);
 
   return json({
-    store,
+    store: activeStore,
     currentPlanId,
     currentUsage,
     usagePercent,

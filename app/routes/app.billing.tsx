@@ -945,6 +945,54 @@ export default function ManualBillingPage() {
             </div>
           </Grid.Cell>
         </Grid>
+
+        {/* Mobile Sticky Bottom Action Bar */}
+        <div
+          className="pos-mobile-action-bar"
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: "#ffffff",
+            borderTop: "1px solid #cbd5e1",
+            padding: "10px 16px",
+            boxShadow: "0 -4px 16px rgba(0, 0, 0, 0.12)",
+            zIndex: 9999,
+            display: "none",
+            alignItems: "center",
+            justifyContent: "space-between",
+            boxSizing: "border-box"
+          }}
+        >
+          <div>
+            <div style={{ fontSize: "10px", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+              Payable ({paymentMode})
+            </div>
+            <div style={{ fontSize: "20px", fontWeight: 800, color: "#15803d" }}>
+              ₹{liveCalculation.grandTotal}
+            </div>
+          </div>
+          <Button
+            variant="primary"
+            size="large"
+            onClick={handleSubmitBill}
+            loading={isSubmitting}
+          >
+            🖨️ Generate &amp; Print Bill
+          </Button>
+        </div>
+
+        <style>{`
+          @media (max-width: 768px) {
+            .pos-mobile-action-bar {
+              display: flex !important;
+            }
+            body {
+              padding-bottom: 70px !important;
+            }
+          }
+        `}</style>
       </BlockStack>
     </Page>
   );
