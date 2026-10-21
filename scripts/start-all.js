@@ -22,8 +22,8 @@ try {
 }
 
 // Ensure public URL is preserved for application services while remix-serve binds to 0.0.0.0
-const publicUrl = process.env.APP_URL || process.env.HOST;
-const webEnv = { ...process.env, HOST: "0.0.0.0", APP_URL: publicUrl };
+const rawUrl = process.env.APP_URL || (process.env.HOST && process.env.HOST !== "0.0.0.0" ? process.env.HOST : undefined);
+const webEnv = { ...process.env, HOST: "0.0.0.0", ...(rawUrl ? { APP_URL: rawUrl } : {}) };
 
 const web = spawn("npx", ["remix-serve", "./build/server/index.js"], {
   stdio: "inherit",

@@ -44,6 +44,50 @@ export async function requireAdmin(request: Request) {
 }
 
 /**
+ * Resolves the canonical public origin URL (e.g. "https://itskoop.inaragroups.com")
+ * Handles reverse proxies (x-forwarded-proto, x-forwarded-host), APP_URL env, and ignores raw "0.0.0.0".
+ */
+export function getPublicOrigin(request: Request): string {
+  // 1. First priority: Check reverse-proxy headers (Nginx, Cloudflare, Load Balancer)
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
+
+  if (forwardedHost && forwardedHost !== "0.0.0.0" && !forwardedHost.startsWith("0.0.0.0:")) {
+    return `${forwardedProto}://${forwardedHost}`.replace(/\/+$/, "");
+  }
+
+  // 2. Next priority: Standard Host header if valid and not 0.0.0.0
+  const hostHeader = request.headers.get("host");
+  const url = new URL(request.url);
+  const proto = request.headers.get("x-forwarded-proto") || (url.protocol ? url.protocol.replace(":", "") : "http");
+
+  if (hostHeader && hostHeader !== "0.0.0.0" && !hostHeader.startsWith("0.0.0.0:")) {
+    return `${proto}://${hostHeader}`.replace(/\/+$/, "");
+  }
+
+  // 3. Fallback: APP_URL or HOST env (only if they are valid protocols and not 0.0.0.0)
+  const envAppUrl = process.env.APP_URL;
+  if (
+    envAppUrl &&
+    (envAppUrl.startsWith("http://") || envAppUrl.startsWith("https://")) &&
+    !envAppUrl.includes("0.0.0.0")
+  ) {
+    return envAppUrl.replace(/\/+$/, "");
+  }
+
+  const envHost = process.env.HOST;
+  if (
+    envHost &&
+    (envHost.startsWith("http://") || envHost.startsWith("https://")) &&
+    !envHost.includes("0.0.0.0")
+  ) {
+    return envHost.replace(/\/+$/, "");
+  }
+
+  return `${url.protocol}//${url.host}`.replace(/\/+$/, "");
+}
+
+/**
  * Generates a cryptographically secure unique demo token
  */
 export function generateUniqueDemoToken(): string {

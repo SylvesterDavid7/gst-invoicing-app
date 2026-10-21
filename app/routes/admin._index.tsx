@@ -10,6 +10,7 @@ import { useState } from "react";
 import { prisma } from "../db.server";
 import {
   requireAdmin,
+  getPublicOrigin,
   createDemoAccess,
   revokeDemoAccess,
   extendDemoAccess,
@@ -28,8 +29,7 @@ export const meta: MetaFunction = () => {
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdmin(request);
 
-  const url = new URL(request.url);
-  const origin = process.env.HOST || `${url.protocol}//${url.host}`;
+  const origin = getPublicOrigin(request);
 
   const demos = await listAllDemoAccesses();
   const clients = await listAllClientsWithStats();
@@ -130,6 +130,11 @@ export default function AdminPortal() {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
+  const effectiveOrigin =
+    typeof window !== "undefined" && window.location.origin
+      ? window.location.origin
+      : origin;
+
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [selectedDuration, setSelectedDuration] = useState<number>(3);
   const [customDays, setCustomDays] = useState<string>("");
@@ -229,14 +234,14 @@ export default function AdminPortal() {
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 <button
                   type="button"
-                  onClick={() => handleCopy(`${origin}/demo/${newlyCreated.token}`, newlyCreated.token)}
+                  onClick={() => handleCopy(`${effectiveOrigin}/demo/${newlyCreated.token}`, newlyCreated.token)}
                   style={styles.copyBtn}
                 >
                   {copiedToken === newlyCreated.token ? "✓ Copied!" : "📋 Copy Demo Link"}
                 </button>
 
                 <a
-                  href={`${origin}/demo/${newlyCreated.token}`}
+                  href={`${effectiveOrigin}/demo/${newlyCreated.token}`}
                   target="_blank"
                   rel="noreferrer"
                   style={styles.previewBtn}
@@ -246,7 +251,7 @@ export default function AdminPortal() {
 
                 <a
                   href={`https://wa.me/?text=${encodeURIComponent(
-                    `Hi ${newlyCreated.clientName}! Here is your exclusive 3-day preview link for the automated Indian GST Invoicing app for Shopify: ${origin}/demo/${newlyCreated.token}`
+                    `Hi ${newlyCreated.clientName}! Here is your exclusive 3-day preview link for the automated Indian GST Invoicing app for Shopify: ${effectiveOrigin}/demo/${newlyCreated.token}`
                   )}`}
                   target="_blank"
                   rel="noreferrer"
@@ -259,7 +264,7 @@ export default function AdminPortal() {
 
             <div style={styles.urlDisplayBox}>
               <code style={{ fontSize: "13px", color: "#008060", wordBreak: "break-all" }}>
-                {origin}/demo/{newlyCreated.token}
+                {effectiveOrigin}/demo/{newlyCreated.token}
               </code>
             </div>
           </div>
@@ -460,7 +465,7 @@ export default function AdminPortal() {
                       const isRevoked = demo.computedStatus === "REVOKED";
                       const isActive = demo.computedStatus === "ACTIVE";
 
-                      const fullUrl = `${origin}/demo/${demo.token}`;
+                      const fullUrl = `${effectiveOrigin}/demo/${demo.token}`;
                       const remainingMs = new Date(demo.expiresAt).getTime() - Date.now();
                       const remainingHours = Math.round(remainingMs / (1000 * 60 * 60));
                       const remainingDays = (remainingMs / (1000 * 60 * 60 * 24)).toFixed(1);
