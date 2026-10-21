@@ -1,22 +1,48 @@
 import { prisma } from "../../db.server";
+import { getAndValidateDemoAccess } from "../admin/admin.server";
+
+/**
+ * Checks if the request is governed by a demo token session
+ */
+export async function getActiveDemoSession(request: Request) {
+  const url = new URL(request.url);
+  const demoParam = url.searchParams.get("demo_token");
+  const cookieHeader = request.headers.get("Cookie") || "";
+  const match = cookieHeader.match(/demo_token=([^;]+)/);
+  const demoCookie = match ? decodeURIComponent(match[1]) : null;
+  const token = demoParam || demoCookie;
+  if (!token) return null;
+
+  return getAndValidateDemoAccess(token);
+}
 
 /**
  * Resolves the active store for the current request.
  * Checks:
- * 1. URL search parameter: ?shop=xyz.myshopify.com
- * 2. Cookie: active_shop
- * 3. Fallback to the first store in the database.
+ * 1. Demo token session (if present, enforces demo validity)
+ * 2. URL search parameter: ?shop=xyz.myshopify.com
+ * 3. Cookie: active_shop
+ * 4. Fallback to DEFAULT_STORE_DOMAIN
  */
 export async function getActiveStore(request: Request) {
   const url = new URL(request.url);
   const shopParam = url.searchParams.get("shop");
+
+  // Check demo session first if active
+  const demoSession = await getActiveDemoSession(request);
+  if (demoSession) {
+    if (demoSession.status !== "ACTIVE" || new Date() > new Date(demoSession.expiresAt)) {
+      // Demo is expired or revoked! Return null to lock them out of the app
+      return null;
+    }
+  }
 
   // Check cookie for active store if query param not present
   const cookieHeader = request.headers.get("Cookie") || "";
   const match = cookieHeader.match(/active_shop=([^;]+)/);
   const shopCookie = match ? decodeURIComponent(match[1]) : null;
 
-  const targetDomain = shopParam || shopCookie || process.env.DEFAULT_STORE_DOMAIN;
+  const targetDomain = demoSession?.storeDomain || shopParam || shopCookie || process.env.DEFAULT_STORE_DOMAIN;
 
   if (targetDomain) {
     const store = await prisma.store.findUnique({

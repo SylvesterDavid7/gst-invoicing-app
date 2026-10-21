@@ -589,6 +589,9 @@ export default function LandingPage() {
             <Link to="/data-policy" style={{ color: "#4b5563", textDecoration: "none" }}>
               Data &amp; GDPR Policy
             </Link>
+            <Link to="/admin" style={{ color: "#008060", textDecoration: "none", fontWeight: 600 }}>
+              Admin Portal ⚡
+            </Link>
           </div>
         </div>
       </footer>

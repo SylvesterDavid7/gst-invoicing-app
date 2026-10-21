@@ -14,7 +14,7 @@
     "test:order": "tsx scripts/trigger-webhook.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "test": "tsx --test app/services/tax-engine/calculator.test.ts"
+    "test": "tsx --test app/services/**/*.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

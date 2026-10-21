@@ -3,9 +3,19 @@ import { Outlet, useLocation, Link, useLoaderData } from "@remix-run/react";
 import { AppProvider } from "@shopify/polaris";
 import enTranslations from "@shopify/polaris/locales/en.json";
 import "@shopify/polaris/build/esm/styles.css";
-import { getActiveStore } from "../services/store/store.server";
+import { getActiveStore, getActiveDemoSession } from "../services/store/store.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  // Check if visitor is running inside a demo session
+  const demoSession = await getActiveDemoSession(request);
+  if (demoSession) {
+    const isExpired = demoSession.status === "EXPIRED" || new Date() > new Date(demoSession.expiresAt);
+    const isRevoked = demoSession.status === "REVOKED";
+    if (isExpired || isRevoked) {
+      return redirect(`/demo/${demoSession.token}`);
+    }
+  }
+
   const activeStore = await getActiveStore(request);
 
   if (!activeStore) {
@@ -23,13 +33,22 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 
   return json(
-    { activeStore },
+    {
+      activeStore,
+      demoInfo: demoSession
+        ? {
+            clientName: demoSession.clientName,
+            expiresAt: demoSession.expiresAt.toISOString(),
+            token: demoSession.token
+          }
+        : null
+    },
     { headers: headers.has("Set-Cookie") ? headers : undefined }
   );
 }
 
 export default function AppLayout() {
-  const { activeStore } = useLoaderData<typeof loader>();
+  const { activeStore, demoInfo } = useLoaderData<typeof loader>();
   const location = useLocation();
 
   const shopQuery = activeStore ? `?shop=${encodeURIComponent(activeStore.shopifyDomain)}` : "";
@@ -46,6 +65,53 @@ export default function AppLayout() {
   return (
     <AppProvider i18n={enTranslations}>
       <div style={{ background: "#f6f6f7", minHeight: "100vh" }}>
+        {demoInfo && (
+          <div
+            style={{
+              background: "linear-gradient(90deg, #1e1b4b 0%, #312e81 100%)",
+              color: "#ffffff",
+              padding: "10px 24px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontSize: "12px",
+              fontWeight: 500,
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+              borderBottom: "1px solid #4338ca"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "14px" }}>⚡</span>
+              <span>
+                <strong>Demo Mode Active:</strong> Welcome, <strong>{demoInfo.clientName}</strong>! You have full interactive access to test GST Pro until{" "}
+                <span style={{ color: "#fef08a", fontWeight: 700 }}>
+                  {new Date(demoInfo.expiresAt).toLocaleDateString("en-IN", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric"
+                  })}
+                </span>{" "}
+                at {new Date(demoInfo.expiresAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}.
+              </span>
+            </div>
+            <a
+              href="/#pricing"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                color: "#fef08a",
+                textDecoration: "none",
+                fontWeight: 700,
+                background: "rgba(255,255,255,0.15)",
+                padding: "4px 12px",
+                borderRadius: "6px",
+                border: "1px solid rgba(255,255,255,0.25)"
+              }}
+            >
+              Get Full Access &rarr;
+            </a>
+          </div>
+        )}
         <header
           style={{
             background: "#ffffff",

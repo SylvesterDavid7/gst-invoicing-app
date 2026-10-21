@@ -184,3 +184,30 @@ enum CreditNoteStatus {
   DELIVERED
   CANCELLED
 }
+
+model DemoAccess {
+  id              String      @id @default(uuid())
+  token           String      @unique
+  clientName      String
+  clientEmail     String?
+  clientPhone     String?
+  storeDomain     String
+  durationDays    Int         @default(3)
+  expiresAt       DateTime
+  firstAccessedAt DateTime?
+  lastAccessedAt  DateTime?
+  accessCount     Int         @default(0)
+  status          DemoStatus  @default(ACTIVE)
+  notes           String?     @db.Text
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([token])
+  @@index([status, expiresAt])
+}
+
+enum DemoStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
