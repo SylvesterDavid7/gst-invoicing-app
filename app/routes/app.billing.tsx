@@ -27,7 +27,7 @@ import {
   Grid,
   ButtonGroup
 } from "@shopify/polaris";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { prisma } from "../db.server";
 import { GST_STATE_MAP, getStateNameByCode } from "../services/tax-engine/state-codes";
 import { validateGstin } from "../services/tax-engine/gstin-validator";
@@ -263,13 +263,22 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
-// Preset Items for fast 1-click counter add
-const QUICK_ITEMS = [
-  { title: "Monsooned Malabar Whole Beans (1kg)", sku: "XB-MM-1KG", hsnCode: "0901", unitPrice: 1200, taxRate: 5 },
-  { title: "Kalledevarapura Estate Medium Roast (250g)", sku: "XB-KD-250G", hsnCode: "0901", unitPrice: 450, taxRate: 5 },
-  { title: "Cold Brew Steep Packs (Box of 5)", sku: "XB-CB-BOX5", hsnCode: "2101", unitPrice: 550, taxRate: 18 },
-  { title: "Precision Espresso Tamper 58.5mm", sku: "XB-ACC-TMPR", hsnCode: "8205", unitPrice: 2360, taxRate: 18 },
-  { title: "Ceramic Cupping Bowl (200ml)", sku: "XB-CUP-200", hsnCode: "6912", unitPrice: 380, taxRate: 12 }
+// Universal catalog item specification for fast 1-click counter add
+export interface QuickCatalogItem {
+  id: string;
+  title: string;
+  sku?: string;
+  hsnCode: string;
+  unitPrice: number;
+  taxRate: number;
+}
+
+const DEFAULT_UNIVERSAL_ITEMS: QuickCatalogItem[] = [
+  { id: "def_1", title: "Standard Retail Goods", sku: "SKU-01", hsnCode: "2106", unitPrice: 500, taxRate: 18 },
+  { id: "def_2", title: "Packaged Consumables / F&B", sku: "PKG-02", hsnCode: "2106", unitPrice: 250, taxRate: 12 },
+  { id: "def_3", title: "Essential Daily Supply", sku: "ESS-03", hsnCode: "1006", unitPrice: 150, taxRate: 5 },
+  { id: "def_4", title: "Commercial Sample / Trial Pack", sku: "SMP-04", hsnCode: "2106", unitPrice: 250, taxRate: 0 },
+  { id: "def_5", title: "Professional Service / Charge", sku: "SRV-05", hsnCode: "9983", unitPrice: 1500, taxRate: 18 }
 ];
 
 export default function ManualBillingPage() {
@@ -278,6 +287,8 @@ export default function ManualBillingPage() {
   const submit = useSubmit();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+
+  const storageKey = `gst_quick_catalog_${store?.shopifyDomain || "default"}`;
 
   const [customerType, setCustomerType] = useState<"B2C" | "B2B">("B2C");
   const [customerName, setCustomerName] = useState("Walk-in Customer");
@@ -289,8 +300,83 @@ export default function ManualBillingPage() {
   const [shippingGross, setShippingGross] = useState("0");
 
   const [items, setItems] = useState([
-    { id: 1, title: "Monsooned Malabar Whole Beans (1kg)", sku: "XB-MM-1KG", hsnCode: "0901", quantity: 1, unitPrice: 1200, taxRate: 5 }
+    { id: 1, title: "Standard Retail Goods", sku: "SKU-01", hsnCode: "2106", quantity: 1, unitPrice: 500, taxRate: 18 }
   ]);
+
+  // Dynamic Quick Catalog Items (persisted in localStorage per store)
+  const [quickItems, setQuickItems] = useState<QuickCatalogItem[]>(DEFAULT_UNIVERSAL_ITEMS);
+  const [isManagingCatalog, setIsManagingCatalog] = useState(false);
+  const [showAddCatalogForm, setShowAddCatalogForm] = useState(false);
+  const [catalogFeedback, setCatalogFeedback] = useState<string | null>(null);
+
+  // New Catalog Item Form State
+  const [newCatTitle, setNewCatTitle] = useState("");
+  const [newCatSku, setNewCatSku] = useState("");
+  const [newCatHsn, setNewCatHsn] = useState("2106");
+  const [newCatPrice, setNewCatPrice] = useState("500");
+  const [newCatTaxRate, setNewCatTaxRate] = useState("18");
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setQuickItems(parsed);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load quick catalog from localStorage", e);
+    }
+  }, [storageKey]);
+
+  const saveQuickItems = (newItems: QuickCatalogItem[], feedbackMsg?: string) => {
+    setQuickItems(newItems);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(newItems));
+      if (feedbackMsg) {
+        setCatalogFeedback(feedbackMsg);
+        setTimeout(() => setCatalogFeedback(null), 3000);
+      }
+    } catch (e) {
+      console.error("Failed to persist quick catalog to localStorage", e);
+    }
+  };
+
+  const handleSaveNewCatalogItem = () => {
+    if (!newCatTitle.trim()) return;
+    const item: QuickCatalogItem = {
+      id: `cat_${Date.now()}`,
+      title: newCatTitle.trim(),
+      sku: newCatSku.trim() || undefined,
+      hsnCode: newCatHsn.trim() || "2106",
+      unitPrice: parseFloat(newCatPrice) || 0,
+      taxRate: parseFloat(newCatTaxRate) || 0
+    };
+    const updated = [...quickItems, item];
+    saveQuickItems(updated, `Saved "${item.title}" to Quick-Add list!`);
+    setNewCatTitle("");
+    setNewCatSku("");
+    setShowAddCatalogForm(false);
+  };
+
+  const handleDeleteCatalogItem = (id: string) => {
+    const updated = quickItems.filter((item) => item.id !== id);
+    saveQuickItems(updated, "Item removed from quick-adds.");
+  };
+
+  const handleSaveLineItemToCatalog = (item: { title: string; sku?: string | null; hsnCode: string; unitPrice: number; taxRate: number }) => {
+    const catalogItem: QuickCatalogItem = {
+      id: `cat_${Date.now()}`,
+      title: item.title,
+      sku: item.sku || undefined,
+      hsnCode: item.hsnCode || "2106",
+      unitPrice: Number(item.unitPrice) || 0,
+      taxRate: Number(item.taxRate) || 0
+    };
+    const updated = [...quickItems, catalogItem];
+    saveQuickItems(updated, `Saved "${item.title}" to quick-adds!`);
+  };
 
   // When user types GSTIN, auto-extract the state code!
   const handleGstinChange = (val: string) => {
@@ -304,10 +390,10 @@ export default function ManualBillingPage() {
     }
   };
 
-  const handleAddItem = (preset?: typeof QUICK_ITEMS[0]) => {
+  const handleAddItem = (preset?: QuickCatalogItem) => {
     const newItem = preset
-      ? { id: Date.now(), ...preset, quantity: 1 }
-      : { id: Date.now(), title: "Fresh Coffee Beans (250g)", sku: "XB-CUSTOM", hsnCode: "0901", quantity: 1, unitPrice: 400, taxRate: 5 };
+      ? { id: Date.now(), title: preset.title, sku: preset.sku || "", hsnCode: preset.hsnCode, quantity: 1, unitPrice: preset.unitPrice, taxRate: preset.taxRate }
+      : { id: Date.now(), title: "Standard Retail Goods", sku: "ITEM", hsnCode: "2106", quantity: 1, unitPrice: 250, taxRate: 18 };
     setItems((prev) => [...prev, newItem]);
   };
 
@@ -391,22 +477,166 @@ export default function ManualBillingPage() {
           </Banner>
         )}
 
-        {/* Quick Add Presets Bar */}
+        {/* Universal Quick-Add Catalog Bar */}
         <Card>
-          <BlockStack gap="200">
+          <BlockStack gap="300">
             <InlineStack align="space-between">
-              <Text as="h3" variant="headingSm">⚡ Quick Add Roastery Catalog Items:</Text>
-              <Badge tone="info">{`${items.length} items in cart`}</Badge>
-            </InlineStack>
-            <InlineStack gap="200" wrap>
-              {QUICK_ITEMS.map((item, idx) => (
-                <Button key={String(idx)} size="slim" onClick={() => handleAddItem(item)}>
-                  {`+ ${item.title.split("(")[0].trim()} (₹${item.unitPrice})`}
+              <InlineStack gap="200" align="center">
+                <Text as="h3" variant="headingSm">⚡ Quick-Add Catalog Items:</Text>
+                <Badge tone="info">{`${items.length} in bill`}</Badge>
+              </InlineStack>
+
+              <InlineStack gap="200">
+                <Button
+                  size="slim"
+                  variant={showAddCatalogForm ? "primary" : "secondary"}
+                  onClick={() => setShowAddCatalogForm(!showAddCatalogForm)}
+                >
+                  {showAddCatalogForm ? "Close Form" : "+ Add New Item to Quick-Adds"}
                 </Button>
+                <Button
+                  size="slim"
+                  variant="plain"
+                  onClick={() => setIsManagingCatalog(!isManagingCatalog)}
+                >
+                  {isManagingCatalog ? "Done Managing" : "⚙️ Manage Quick Items"}
+                </Button>
+              </InlineStack>
+            </InlineStack>
+
+            {catalogFeedback && (
+              <Banner tone="success" onDismiss={() => setCatalogFeedback(null)}>
+                <p>{catalogFeedback}</p>
+              </Banner>
+            )}
+
+            {/* Inline Form to Add a Custom Item to Quick-Add List */}
+            {showAddCatalogForm && (
+              <div
+                style={{
+                  background: "#f8fafc",
+                  padding: "16px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1"
+                }}
+              >
+                <BlockStack gap="300">
+                  <Text as="h4" variant="headingXs">
+                    Add New Product / Service to Quick-Add Catalog
+                  </Text>
+                  <Grid>
+                    <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 3, lg: 3, xl: 3 }}>
+                      <TextField
+                        label="Product / Item Description *"
+                        value={newCatTitle}
+                        onChange={setNewCatTitle}
+                        placeholder="e.g. Sanbaee Premix 1kg"
+                        autoComplete="off"
+                      />
+                    </Grid.Cell>
+                    <Grid.Cell columnSpan={{ xs: 3, sm: 3, md: 2, lg: 2, xl: 2 }}>
+                      <TextField
+                        label="SKU (Optional)"
+                        value={newCatSku}
+                        onChange={setNewCatSku}
+                        placeholder="e.g. SB-1KG"
+                        autoComplete="off"
+                      />
+                    </Grid.Cell>
+                    <Grid.Cell columnSpan={{ xs: 3, sm: 3, md: 2, lg: 2, xl: 2 }}>
+                      <TextField
+                        label="HSN / SAC Code"
+                        value={newCatHsn}
+                        onChange={setNewCatHsn}
+                        placeholder="e.g. 2106"
+                        autoComplete="off"
+                      />
+                    </Grid.Cell>
+                    <Grid.Cell columnSpan={{ xs: 3, sm: 3, md: 2, lg: 2, xl: 2 }}>
+                      <TextField
+                        label="Unit Rate (₹) *"
+                        type="number"
+                        value={newCatPrice}
+                        onChange={setNewCatPrice}
+                        autoComplete="off"
+                      />
+                    </Grid.Cell>
+                    <Grid.Cell columnSpan={{ xs: 3, sm: 3, md: 3, lg: 3, xl: 3 }}>
+                      <Select
+                        label="GST Rate"
+                        options={[
+                          { label: "0% (Exempt / Nil Rated)", value: "0" },
+                          { label: "5% (Essential Goods)", value: "5" },
+                          { label: "12% (F&B / Goods)", value: "12" },
+                          { label: "18% (Standard Rate)", value: "18" },
+                          { label: "28% (Luxury / Aerated)", value: "28" }
+                        ]}
+                        value={newCatTaxRate}
+                        onChange={setNewCatTaxRate}
+                      />
+                    </Grid.Cell>
+                  </Grid>
+
+                  <InlineStack align="end" gap="200">
+                    <Button onClick={() => setShowAddCatalogForm(false)} size="slim">
+                      Cancel
+                    </Button>
+                    <Button variant="primary" onClick={handleSaveNewCatalogItem} size="slim">
+                      💾 Save to Quick-Add Catalog
+                    </Button>
+                  </InlineStack>
+                </BlockStack>
+              </div>
+            )}
+
+            {/* Quick-Add Buttons List */}
+            <InlineStack gap="200" wrap>
+              {quickItems.map((item) => (
+                <div key={item.id} style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                  <Button size="slim" onClick={() => handleAddItem(item)}>
+                    {`+ ${item.title.split("(")[0].trim()} (₹${item.unitPrice})`}
+                  </Button>
+                  {isManagingCatalog && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCatalogItem(item.id)}
+                      title={`Remove ${item.title} from quick-adds`}
+                      style={{
+                        background: "#fee2e2",
+                        border: "1px solid #fecaca",
+                        color: "#b91c1c",
+                        borderRadius: "50%",
+                        width: "18px",
+                        height: "18px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        padding: 0
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               ))}
+
               <Button size="slim" variant="plain" onClick={() => handleAddItem()}>
-                + Custom Item
+                + Custom Blank Row
               </Button>
+
+              {isManagingCatalog && (
+                <Button
+                  size="slim"
+                  variant="plain"
+                  tone="critical"
+                  onClick={() => saveQuickItems(DEFAULT_UNIVERSAL_ITEMS, "Reset quick-add items to universal defaults.")}
+                >
+                  Reset Defaults
+                </Button>
+              )}
             </InlineStack>
           </BlockStack>
         </Card>
@@ -581,11 +811,11 @@ export default function ManualBillingPage() {
                           <Select
                             label="GST Rate"
                             options={[
-                              { label: "0% (Exempt)", value: "0" },
-                              { label: "5% (Coffee)", value: "5" },
-                              { label: "12% (Goods)", value: "12" },
-                              { label: "18% (Standard)", value: "18" },
-                              { label: "28% (Luxury)", value: "28" }
+                              { label: "0% (Exempt / Nil)", value: "0" },
+                              { label: "5% (Essential Goods)", value: "5" },
+                              { label: "12% (F&B / Goods)", value: "12" },
+                              { label: "18% (Standard Rate)", value: "18" },
+                              { label: "28% (Luxury / Aerated)", value: "28" }
                             ]}
                             value={String(item.taxRate)}
                             onChange={(val) => handleUpdateItem(item.id, "taxRate", parseFloat(val))}
@@ -597,11 +827,20 @@ export default function ManualBillingPage() {
                         <span style={{ fontSize: "12px", color: "#6d7175" }}>
                           Line Total: <strong>₹{(item.quantity * item.unitPrice).toFixed(2)}</strong> (Incl. {item.taxRate}% GST)
                         </span>
-                        {items.length > 1 && (
-                          <Button tone="critical" variant="plain" size="micro" onClick={() => handleRemoveItem(item.id)}>
-                            Delete Item
+                        <InlineStack gap="200">
+                          <Button
+                            variant="plain"
+                            size="micro"
+                            onClick={() => handleSaveLineItemToCatalog(item)}
+                          >
+                            ⭐ Save to Quick-Adds
                           </Button>
-                        )}
+                          {items.length > 1 && (
+                            <Button tone="critical" variant="plain" size="micro" onClick={() => handleRemoveItem(item.id)}>
+                              Delete Item
+                            </Button>
+                          )}
+                        </InlineStack>
                       </div>
                     </div>
                   ))}
