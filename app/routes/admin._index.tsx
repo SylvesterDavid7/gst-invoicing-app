@@ -296,15 +296,17 @@ export default function AdminPortal() {
 
               <div style={styles.field}>
                 <label style={styles.label}>Demo Store Environment</label>
-                <select name="storeDomain" defaultValue={clients[0]?.shopifyDomain || "xbrews-gst-demo.myshopify.com"} style={styles.select}>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.shopifyDomain}>
-                      {c.tradeName || c.legalName} ({c.shopifyDomain})
-                    </option>
-                  ))}
-                  <option value="madras-square-demo.myshopify.com">
-                    + Provision New Demo Sandbox (madras-square-demo.myshopify.com)
+                <select name="storeDomain" defaultValue="auto_fresh_sandbox" style={styles.select}>
+                  <option value="auto_fresh_sandbox">
+                    ✨ Clean Isolated Sandbox (Fresh 0 Invoices for this Client — Recommended)
                   </option>
+                  <optgroup label="Or Map to an Existing Store">
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.shopifyDomain}>
+                        {c.tradeName || c.legalName} ({c.shopifyDomain})
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
             </div>

@@ -29,9 +29,15 @@ import {
   getRemainingTrialDays
 } from "../services/billing/billing-plans.server";
 
-import { getActiveStore } from "../services/store/store.server";
+import { getActiveStore, getActiveDemoSession } from "../services/store/store.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  // Demo users should only access product features, not SaaS billing plans
+  const demoSession = await getActiveDemoSession(request);
+  if (demoSession) {
+    return redirect(`/app?shop=${encodeURIComponent(demoSession.storeDomain)}`);
+  }
+
   let store = await getActiveStore(request);
 
   if (!store) {

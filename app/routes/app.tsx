@@ -53,14 +53,18 @@ export default function AppLayout() {
 
   const shopQuery = activeStore ? `?shop=${encodeURIComponent(activeStore.shopifyDomain)}` : "";
 
+  // In demo mode, only expose product features (Dashboard, POS, Invoices, Settings, Reports), NOT Plans & Pricing
   const navItems = [
     { label: "Dashboard", path: "/app" },
     { label: "Manual Billing (POS)", path: "/app/billing" },
     { label: "Invoices", path: "/app/invoices" },
     { label: "Settings", path: "/app/settings" },
-    { label: "GSTR-1 Exports", path: "/app/reports" },
-    { label: "Plans & Pricing", path: "/app/pricing" }
+    { label: "GSTR-1 Exports", path: "/app/reports" }
   ];
+
+  if (!demoInfo) {
+    navItems.push({ label: "Plans & Pricing", path: "/app/pricing" });
+  }
 
   return (
     <AppProvider i18n={enTranslations}>
@@ -70,7 +74,7 @@ export default function AppLayout() {
             style={{
               background: "linear-gradient(90deg, #1e1b4b 0%, #312e81 100%)",
               color: "#ffffff",
-              padding: "10px 24px",
+              padding: "9px 24px",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -83,7 +87,8 @@ export default function AppLayout() {
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ fontSize: "14px" }}>⚡</span>
               <span>
-                <strong>Demo Mode Active:</strong> Welcome, <strong>{demoInfo.clientName}</strong>! You have full interactive access to test GST Pro until{" "}
+                <strong>Feature Testing Sandbox:</strong> Dedicated demo environment for{" "}
+                <strong>{demoInfo.clientName}</strong> &bull; 3-Day access valid until{" "}
                 <span style={{ color: "#fef08a", fontWeight: 700 }}>
                   {new Date(demoInfo.expiresAt).toLocaleDateString("en-IN", {
                     month: "short",
@@ -91,25 +96,22 @@ export default function AppLayout() {
                     year: "numeric"
                   })}
                 </span>{" "}
-                at {new Date(demoInfo.expiresAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}.
+                at {new Date(demoInfo.expiresAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
               </span>
             </div>
-            <a
-              href="/#pricing"
-              target="_blank"
-              rel="noreferrer"
+            <span
               style={{
-                color: "#fef08a",
-                textDecoration: "none",
-                fontWeight: 700,
-                background: "rgba(255,255,255,0.15)",
-                padding: "4px 12px",
-                borderRadius: "6px",
-                border: "1px solid rgba(255,255,255,0.25)"
+                color: "#e0e7ff",
+                background: "rgba(255,255,255,0.12)",
+                padding: "3px 10px",
+                borderRadius: "12px",
+                fontSize: "11px",
+                fontWeight: 600,
+                border: "1px solid rgba(255,255,255,0.2)"
               }}
             >
-              Get Full Access &rarr;
-            </a>
+              Demo Sandbox
+            </span>
           </div>
         )}
         <header

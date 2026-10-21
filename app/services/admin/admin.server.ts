@@ -61,12 +61,70 @@ export interface CreateDemoInput {
 }
 
 /**
- * Creates a unique time-limited demo URL access record
+ * Provisions a completely fresh, isolated demo store specifically for a prospect.
+ * Starts with 0 invoices and custom prefix so they never see anyone else's data.
+ */
+export async function provisionDemoSandboxStore(clientName: string) {
+  const cleanSlug = clientName
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  const uniqueHex = crypto.randomBytes(3).toString("hex");
+  const storeDomain = `demo-${cleanSlug || "client"}-${uniqueHex}.myshopify.com`;
+
+  const cleanPrefix =
+    clientName
+      .split(/\s+/)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .replace(/[^A-Z]/g, "")
+      .slice(0, 3) || "INV";
+
+  const store = await prisma.store.create({
+    data: {
+      shopifyDomain: storeDomain,
+      accessToken: "demo-sandbox-token",
+      legalName: `${clientName.trim()} Private Limited`,
+      tradeName: clientName.trim(),
+      gstin: "33AABCM1234F1Z8", // Sample GSTIN
+      stateCode: "33",
+      registeredAddress: {
+        addressLine1: "Flagship Commercial Premises",
+        city: "Chennai",
+        state: "Tamil Nadu",
+        pincode: "600001",
+        country: "India"
+      },
+      invoicePrefix: cleanPrefix,
+      creditNotePrefix: "CN",
+      currentFiscalYear: "26-27",
+      invoiceSequence: 0,
+      creditSequence: 0
+    }
+  });
+
+  return store;
+}
+
+/**
+ * Creates a unique time-limited demo URL access record.
+ * Automatically provisions a fresh isolated sandbox with 0 old invoices by default.
  */
 export async function createDemoAccess(input: CreateDemoInput) {
   const durationDays = input.durationDays && input.durationDays > 0 ? input.durationDays : 3;
   const token = generateUniqueDemoToken();
   const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+
+  let storeDomain = input.storeDomain?.trim();
+
+  // If auto/empty or explicitly requested fresh sandbox, provision an isolated store
+  if (!storeDomain || storeDomain === "auto" || storeDomain === "auto_fresh_sandbox" || storeDomain.startsWith("new_")) {
+    const sandboxStore = await provisionDemoSandboxStore(input.clientName);
+    storeDomain = sandboxStore.shopifyDomain;
+  }
 
   const demo = await prisma.demoAccess.create({
     data: {
@@ -74,7 +132,7 @@ export async function createDemoAccess(input: CreateDemoInput) {
       clientName: input.clientName.trim(),
       clientEmail: input.clientEmail?.trim() || null,
       clientPhone: input.clientPhone?.trim() || null,
-      storeDomain: input.storeDomain.trim(),
+      storeDomain,
       durationDays,
       expiresAt,
       status: "ACTIVE",
