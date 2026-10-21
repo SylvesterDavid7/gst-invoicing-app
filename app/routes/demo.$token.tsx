@@ -1,6 +1,11 @@
 import { json, redirect, type LoaderFunctionArgs, type MetaFunction } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
-import { getAndValidateDemoAccess, activateDemoSession } from "../services/admin/admin.server";
+import { prisma } from "../db.server";
+import {
+  getAndValidateDemoAccess,
+  activateDemoSession,
+  provisionDemoSandboxStore
+} from "../services/admin/admin.server";
 import { ensureStoreExists } from "../services/store/store.server";
 
 export const meta: MetaFunction = () => {
@@ -42,7 +47,23 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
   // Active Demo: Record access
   await activateDemoSession(demo.id);
-  await ensureStoreExists(demo.storeDomain);
+
+  let targetDomain = demo.storeDomain;
+  // If the demo was created against an old shared store with old invoices, auto-isolate it to a dedicated clean sandbox
+  if (
+    !targetDomain ||
+    targetDomain === "xbrews-gst-demo.myshopify.com" ||
+    targetDomain === "quickstart-demo.myshopify.com"
+  ) {
+    const sandboxStore = await provisionDemoSandboxStore(demo.clientName);
+    targetDomain = sandboxStore.shopifyDomain;
+    await prisma.demoAccess.update({
+      where: { id: demo.id },
+      data: { storeDomain: targetDomain }
+    });
+  }
+
+  await ensureStoreExists(targetDomain);
 
   // Calculate remaining seconds for cookie lifespan
   const remainingMs = Math.max(0, new Date(demo.expiresAt).getTime() - now.getTime());
@@ -51,7 +72,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const headers = new Headers();
   headers.append(
     "Set-Cookie",
-    `active_shop=${encodeURIComponent(demo.storeDomain)}; Path=/; Max-Age=${maxAge}; SameSite=None; Secure`
+    `active_shop=${encodeURIComponent(targetDomain)}; Path=/; Max-Age=${maxAge}; SameSite=None; Secure`
   );
   headers.append(
     "Set-Cookie",
@@ -66,7 +87,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     `demo_expires=${encodeURIComponent(demo.expiresAt.toISOString())}; Path=/; Max-Age=${maxAge}; SameSite=None; Secure`
   );
 
-  return redirect(`/app?shop=${encodeURIComponent(demo.storeDomain)}&demo_token=${encodeURIComponent(demo.token)}`, {
+  return redirect(`/app?shop=${encodeURIComponent(targetDomain)}&demo_token=${encodeURIComponent(demo.token)}`, {
     headers
   });
 }
